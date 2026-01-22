@@ -34,6 +34,16 @@ namespace FSI.CloudShopping.Domain.Entities
 
             Touch();
         }
+        public void RemoveItem(int productId)
+        {
+            var item = _items.FirstOrDefault(x => x.ProductId == productId);
+
+            if (item != null)
+            {
+                _items.Remove(item);
+                Touch(); 
+            }
+        }
         public bool IsExpired() => UpdatedAt < DateTime.UtcNow.AddMonths(-1);
         private void Touch() => UpdatedAt = DateTime.UtcNow;
     }

@@ -5,5 +5,6 @@ namespace FSI.CloudShopping.Domain.Interfaces
     public interface IProductRepository : IRepository<Product>
     {
         Task<Product?> GetBySkuAsync(SKU sku);
+        Task<IEnumerable<Product>> GetByCategoryIdAsync(int categoryId);
     }
 }

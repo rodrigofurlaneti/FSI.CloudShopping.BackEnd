@@ -18,6 +18,13 @@ namespace FSI.CloudShopping.Domain.Entities
                 _items.Add(new OrderItem(item.ProductId, item.Quantity, item.UnitPrice));
             TotalAmount = CalculateTotal();
         }
+        public Order(int customerId, List<OrderItem> items)
+        {
+            CustomerId = customerId;
+            Status = OrderStatus.Pending;
+            _items = items;
+            TotalAmount = CalculateTotal();
+        }
         private Money CalculateTotal()
         {
             decimal total = _items.Sum(x => x.SubTotal().Value);

@@ -1,52 +1,46 @@
 ﻿using FSI.CloudShopping.Application.DTOs;
 using FSI.CloudShopping.Application.Interfaces;
+using FSI.CloudShopping.Application.Mappings;
 using FSI.CloudShopping.Domain.Entities;
 using FSI.CloudShopping.Domain.Interfaces;
 using FSI.CloudShopping.Domain.ValueObjects;
-
 namespace FSI.CloudShopping.Application.Services
 {
     public class CustomerAppService : BaseAppService<CustomerDTO, Customer>, ICustomerAppService
     {
-        // Reutilizamos o repositório da base para evitar erros de compilação
-        public CustomerAppService(ICustomerRepository repository) : base(repository) { }
-
+        private readonly ICustomerRepository _customerRepository;
+        public CustomerAppService(ICustomerRepository repository) : base(repository)
+        {
+            _customerRepository = repository;
+        }
         public async Task<CustomerDTO> RegisterAsync(CustomerDTO dto)
         {
-            var customer = MapToEntity(dto);
-
-            // Lógica Sênior: O Phone vem no DTO e deve ser salvo no primeiro contato
+            var customer = dto.ToEntity();
             var primaryContact = new Contact(
                 customer.Id,
                 new PersonName(dto.Name),
                 new Email(dto.Email),
                 new Phone(dto.Phone),
                 "Principal");
-
             customer.AddContact(primaryContact);
-
-            await Repository.AddAsync(customer);
-            await Repository.SaveChangesAsync();
-
-            return dto with { Id = customer.Id, IsCompany = customer.Document.IsCompany };
+            await _customerRepository.AddAsync(customer);
+            await _customerRepository.SaveChangesAsync();
+            return customer.ToDto();
         }
-
         public async Task UpdateStatusAsync(int id, bool active)
         {
-            var customer = await Repository.GetByIdAsync(id);
-            if (customer == null) throw new ApplicationException("Cliente não encontrado.");
-
+            var customer = await _customerRepository.GetByIdAsync(id);
+            if (customer == null)
+                throw new KeyNotFoundException($"Cliente com ID {id} não encontrado.");
             if (active) customer.Activate(); else customer.Deactivate();
-
-            await Repository.UpdateAsync(customer);
-            await Repository.SaveChangesAsync();
+            await _customerRepository.UpdateAsync(customer);
+            await _customerRepository.SaveChangesAsync();
         }
-
         public async Task UpdateAddressAsync(int customerId, AddressDTO addressDto)
         {
-            var customer = await Repository.GetByIdAsync(customerId);
-            if (customer == null) throw new ApplicationException("Cliente não encontrado.");
-
+            var customer = await _customerRepository.GetByIdAsync(customerId);
+            if (customer == null)
+                throw new KeyNotFoundException($"Cliente com ID {customerId} não encontrado.");
             var address = new Address(
                 addressDto.Street,
                 addressDto.Number,
@@ -55,29 +49,11 @@ namespace FSI.CloudShopping.Application.Services
                 addressDto.State,
                 addressDto.ZipCode,
                 addressDto.IsDefault);
-
             customer.UpdateAddress(address);
-
-            await Repository.UpdateAsync(customer);
-            await Repository.SaveChangesAsync();
+            await _customerRepository.UpdateAsync(customer);
+            await _customerRepository.SaveChangesAsync();
         }
-
-        protected override Customer MapToEntity(CustomerDTO dto) =>
-            new Customer(
-                new Email(dto.Email),
-                new TaxId(dto.TaxId),
-                new Password(dto.Password)
-            );
-
-        protected override CustomerDTO MapToDto(Customer entity) =>
-            new CustomerDTO
-            {
-                Id = entity.Id,
-                Email = entity.Email.Address,
-                TaxId = entity.Document.Number,
-                IsCompany = entity.Document.IsCompany,
-                Name = entity.Contacts.FirstOrDefault()?.Name.FullName ?? "N/A",
-                Phone = entity.Contacts.FirstOrDefault()?.Phone.Number ?? "N/A"
-            };
+        protected override Customer MapToEntity(CustomerDTO dto) => dto.ToEntity();
+        protected override CustomerDTO MapToDto(Customer entity) => entity.ToDto();
     }
 }
