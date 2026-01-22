@@ -15,9 +15,10 @@ namespace FSI.CloudShopping.Domain.Entities
             Quantity = quantity;
             UnitPrice = unitPrice;
         }
-        public void UpdateQuantity(Quantity newQuantity)
+        public void UpdateQuantity(Quantity additionalQuantity)
         {
-            Quantity = newQuantity;
+            Quantity = new Quantity(Quantity.Value + additionalQuantity.Value);
         }
+        public Money TotalPrice => UnitPrice.Multiply(Quantity.Value);
     }
 }

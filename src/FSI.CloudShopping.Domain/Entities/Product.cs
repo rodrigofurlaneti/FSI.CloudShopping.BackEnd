@@ -17,5 +17,11 @@ namespace FSI.CloudShopping.Domain.Entities
             Stock = stock;
         }
         public void UpdatePrice(Money newPrice) => Price = newPrice;
+        public void DebitStock(Quantity quantity)
+        {
+            if (Stock.Value < quantity.Value)
+                throw new DomainException($"Estoque insuficiente para o produto {Name}.");
+            Stock = new Quantity(Stock.Value - quantity.Value);
+        }
     }
 }

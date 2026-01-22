@@ -15,3 +15,4 @@
 
         public override int GetHashCode() => (GetType().GetHashCode() * 907) ^ Id.GetHashCode();
     }
+}
