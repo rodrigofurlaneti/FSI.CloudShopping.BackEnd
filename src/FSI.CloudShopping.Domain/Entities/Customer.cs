@@ -1,5 +1,6 @@
 ﻿using FSI.CloudShopping.Domain.Core;
 using FSI.CloudShopping.Domain.ValueObjects;
+using System.Xml.Linq;
 namespace FSI.CloudShopping.Domain.Entities
 {
     public class Customer : Entity
