@@ -1,0 +1,6 @@
+@FSI.CloudShopping.WebAPI_HostAddress = http://localhost:5229
+
+GET {{FSI.CloudShopping.WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
