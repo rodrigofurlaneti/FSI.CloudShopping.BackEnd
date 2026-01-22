@@ -71,6 +71,18 @@ namespace FSI.CloudShopping.Application.Services
             };
         }
 
+        public async Task ClearCartAsync(string token)
+        {
+            var visitorToken = new VisitorToken(Guid.Parse(token));
+            var cart = await _cartRepository.GetByVisitorTokenAsync(visitorToken);
+
+            if (cart == null) return;
+
+            // Remove o carrinho ou limpa os itens dependendo da sua regra
+            await _cartRepository.RemoveAsync(cart.Id);
+            await _cartRepository.SaveChangesAsync();
+        }
+
         public async Task RemoveItemAsync(string token, int productId)
         {
             var cart = await _cartRepository.GetByVisitorTokenAsync(new VisitorToken(Guid.Parse(token)));

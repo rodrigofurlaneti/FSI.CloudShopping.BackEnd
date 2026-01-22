@@ -49,7 +49,7 @@ namespace FSI.CloudShopping.Application.Services
             {
                 Id = entity.Id,
                 Name = entity.Name,
-                Sku = entity.Sku.Value,
+                Sku = entity.Sku.Code,
                 Price = entity.Price.Value,
                 Stock = entity.Stock.Value
             };

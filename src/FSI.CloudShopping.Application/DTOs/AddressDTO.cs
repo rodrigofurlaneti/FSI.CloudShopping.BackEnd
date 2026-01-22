@@ -1,12 +1,11 @@
 ﻿namespace FSI.CloudShopping.Application.DTOs
 {
-    public record AddressDTO
-    {
-        public string Street { get; init; } = string.Empty;
-        public string Number { get; init; } = string.Empty;
-        public string Neighborhood { get; init; } = string.Empty;
-        public string City { get; init; } = string.Empty;
-        public string State { get; init; } = string.Empty;
-        public string ZipCode { get; init; } = string.Empty;
-    }
+    public record AddressDTO(
+        string Street,
+        string Number,
+        string Neighborhood,
+        string City,
+        string State,
+        string ZipCode,
+        bool IsDefault);
 }

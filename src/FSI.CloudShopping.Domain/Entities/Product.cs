@@ -16,6 +16,12 @@ namespace FSI.CloudShopping.Domain.Entities
             Price = price;
             Stock = stock;
         }
+        public void UpdateStock(Quantity newQuantity)
+        {
+            if (newQuantity.Value < 0)
+                throw new DomainException("A quantidade de estoque não pode ser negativa.");
+            Stock = newQuantity;
+        }
         public void UpdatePrice(Money newPrice) => Price = newPrice;
         public void DebitStock(Quantity quantity)
         {

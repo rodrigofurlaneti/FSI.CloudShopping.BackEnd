@@ -1,4 +1,5 @@
 ﻿using FSI.CloudShopping.Application.Services;
+using FSI.CloudShopping.Application.DTOs;
 using FSI.CloudShopping.Domain.Entities;
 using FSI.CloudShopping.Domain.Interfaces;
 using FSI.CloudShopping.Domain.Interfaces.Services;
@@ -20,7 +21,7 @@ namespace FSI.CloudShopping.UnitTests.Application.Services
             var service = new CartAppService(cartRepoMock.Object, prodRepoMock.Object, domainServiceMock.Object);
             var token = Guid.NewGuid().ToString();
             // Act
-            await service.AddItemAsync(token, new DTOs.AddItemDTO(1, 2));
+            await service.AddItemAsync(token, new AddItemDTO(1, 2));
             // Assert
             cartRepoMock.Verify(r => r.AddAsync(It.IsAny<Cart>()), Times.Once);
         }
