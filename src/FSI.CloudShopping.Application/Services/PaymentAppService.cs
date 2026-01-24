@@ -1,41 +1,54 @@
-﻿using FSI.CloudShopping.Application.DTOs;
+﻿using AutoMapper;
+using FSI.CloudShopping.Application.DTOs;
 using FSI.CloudShopping.Application.Interfaces;
-using FSI.CloudShopping.Application.Mappings; 
+using FSI.CloudShopping.Domain.Core;
 using FSI.CloudShopping.Domain.Entities;
 using FSI.CloudShopping.Domain.Interfaces;
-using FSI.CloudShopping.Domain.Interfaces.Services;
 using FSI.CloudShopping.Domain.ValueObjects;
 namespace FSI.CloudShopping.Application.Services
 {
-    public class PaymentAppService : BaseAppService<PaymentDTO, Payment>, IPaymentAppService
+    public class PaymentAppService : BaseAppService<Payment, PaymentDTO>, IPaymentAppService
     {
-        private readonly IPaymentService _paymentDomainService;
-        private readonly IOrderRepository _orderRepository;
         private readonly IPaymentRepository _paymentRepository;
+        private readonly IOrderRepository _orderRepository;
+
         public PaymentAppService(
-            IPaymentRepository repository,
-            IPaymentService paymentDomainService,
-            IOrderRepository orderRepository) : base(repository)
+            IPaymentRepository paymentRepository,
+            IOrderRepository orderRepository,
+            IMapper mapper) : base(paymentRepository, mapper)
         {
-            _paymentDomainService = paymentDomainService;
+            _paymentRepository = paymentRepository;
             _orderRepository = orderRepository;
-            _paymentRepository = repository;
         }
+
         public async Task<PaymentDTO> ProcessPaymentAsync(PaymentDTO paymentDto)
         {
-            var order = await _orderRepository.GetByIdAsync(paymentDto.OrderId)
-                        ?? throw new ApplicationException("Pedido não encontrado para pagamento.");
-            var paymentMethod = PaymentMethod.FromString(paymentDto.Method);
-            var payment = await _paymentDomainService.ProcessPaymentAsync(order, paymentMethod);
+            var order = await _orderRepository.GetByIdAsync(paymentDto.OrderId);
+            if (order == null)
+                throw new DomainException("Pedido não encontrado para processar pagamento.");
+            var payment = new Payment(
+                order.Id,
+                PaymentMethod.FromString(paymentDto.PaymentMethod),
+                new Money(paymentDto.Amount));
+
+            try
+            {
+                payment.Capture(); 
+            }
+            catch (Exception)
+            {
+                payment.Fail();
+                throw;
+            }
+            await _paymentRepository.AddAsync(payment);
             await _paymentRepository.SaveChangesAsync();
-            return MapToDto(payment);
+            return Mapper.Map<PaymentDTO>(payment);
         }
+
         public async Task<PaymentDTO?> GetByOrderIdAsync(int orderId)
         {
             var payment = await _paymentRepository.GetByOrderIdAsync(orderId);
-            return payment == null ? null : MapToDto(payment);
+            return Mapper.Map<PaymentDTO>(payment);
         }
-        protected override Payment MapToEntity(PaymentDTO dto) => PaymentMapping.MapToEntity(dto);
-        protected override PaymentDTO MapToDto(Payment entity) => PaymentMapping.MapToDto(entity);
     }
 }

@@ -1,11 +1,10 @@
 ﻿using FSI.CloudShopping.Application.DTOs;
+using FSI.CloudShopping.Application.DTOs.Cart;
+using FSI.CloudShopping.Application.DTOs.Customer;
 namespace FSI.CloudShopping.Application.Interfaces
 {
-    public interface ICartAppService
+    public interface ICartAppService : IBaseAppService<CartDTO>
     {
-        Task<CartDTO> GetCartAsync(string visitorTokenOrCustomerId);
-        Task AddItemAsync(string token, AddItemDTO item);
-        Task RemoveItemAsync(string token, int productId);
         Task MergeAfterLoginAsync(Guid visitorToken, int customerId);
         Task ClearCartAsync(string token);
     }

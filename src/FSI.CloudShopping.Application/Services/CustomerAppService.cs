@@ -1,59 +1,71 @@
-﻿using FSI.CloudShopping.Application.DTOs;
+﻿using AutoMapper;
+using FSI.CloudShopping.Application.DTOs.Customer;
 using FSI.CloudShopping.Application.Interfaces;
-using FSI.CloudShopping.Application.Mappings;
+using FSI.CloudShopping.Domain.Core;
 using FSI.CloudShopping.Domain.Entities;
 using FSI.CloudShopping.Domain.Interfaces;
 using FSI.CloudShopping.Domain.ValueObjects;
+
 namespace FSI.CloudShopping.Application.Services
 {
-    public class CustomerAppService : BaseAppService<CustomerDTO, Customer>, ICustomerAppService
+    public class CustomerAppService : BaseAppService<Customer, CustomerDTO>, ICustomerAppService
     {
         private readonly ICustomerRepository _customerRepository;
-        public CustomerAppService(ICustomerRepository repository) : base(repository)
+
+        public CustomerAppService(ICustomerRepository customerRepository, IMapper mapper)
+            : base(customerRepository, mapper)
         {
-            _customerRepository = repository;
+            _customerRepository = customerRepository;
         }
-        public async Task<CustomerDTO> RegisterAsync(CustomerDTO dto)
+
+        public override async Task<CustomerDTO> AddAsync(CustomerDTO dto)
         {
-            var customer = dto.ToEntity();
-            var primaryContact = new Contact(
-                customer.Id,
-                new PersonName(dto.Name),
-                new Email(dto.Email),
-                new Phone(dto.Phone),
-                "Principal");
-            customer.AddContact(primaryContact);
+            var customer = new Customer(dto.SessionToken);
             await _customerRepository.AddAsync(customer);
             await _customerRepository.SaveChangesAsync();
-            return customer.ToDto();
+            return Mapper.Map<CustomerDTO>(customer);
         }
-        public async Task UpdateStatusAsync(int id, bool active)
+
+        public override async Task UpdateAsync(CustomerDTO dto)
         {
-            var customer = await _customerRepository.GetByIdAsync(id);
-            if (customer == null)
-                throw new KeyNotFoundException($"Cliente com ID {id} não encontrado.");
-            if (active) customer.Activate(); else customer.Deactivate();
+            var customer = await _customerRepository.GetByIdAsync(dto.Id);
+            if (customer == null) throw new DomainException("Cliente não encontrado.");
+            if (dto.IsActive) customer.Activate(); else customer.Deactivate();
             await _customerRepository.UpdateAsync(customer);
             await _customerRepository.SaveChangesAsync();
         }
-        public async Task UpdateAddressAsync(int customerId, AddressDTO addressDto)
+
+        public async Task<CustomerDTO?> GetByEmailAsync(string email)
         {
-            var customer = await _customerRepository.GetByIdAsync(customerId);
-            if (customer == null)
-                throw new KeyNotFoundException($"Cliente com ID {customerId} não encontrado.");
-            var address = new Address(
-                addressDto.Street,
-                addressDto.Number,
-                addressDto.Neighborhood,
-                addressDto.City,
-                addressDto.State,
-                addressDto.ZipCode,
-                addressDto.IsDefault);
-            customer.UpdateAddress(address);
+            var customer = await _customerRepository.GetByEmailAsync(new Email(email));
+            return Mapper.Map<CustomerDTO>(customer);
+        }
+
+        public async Task RegisterLeadAsync(RegisterLeadRequest request)
+        {
+            var customer = await _customerRepository.GetByIdAsync(request.CustomerId);
+            if (customer == null) throw new DomainException("Cliente não encontrado.");
+            customer.BecomeLead(new Email(request.Email), new Password(request.Password));
             await _customerRepository.UpdateAsync(customer);
             await _customerRepository.SaveChangesAsync();
         }
-        protected override Customer MapToEntity(CustomerDTO dto) => dto.ToEntity();
-        protected override CustomerDTO MapToDto(Customer entity) => entity.ToDto();
+
+        public async Task UpdateToIndividualAsync(RegisterIndividualRequest request)
+        {
+            var customer = await _customerRepository.GetByIdAsync(request.CustomerId);
+            if (customer == null) throw new DomainException("Cliente não encontrado.");
+            customer.BecomeIndividual(request.Cpf, request.FullName, request.BirthDate);
+            await _customerRepository.UpdateAsync(customer);
+            await _customerRepository.SaveChangesAsync();
+        }
+
+        public async Task UpdateToCompanyAsync(RegisterCompanyRequest request)
+        {
+            var customer = await _customerRepository.GetByIdAsync(request.CustomerId);
+            if (customer == null) throw new DomainException("Cliente não encontrado.");
+            customer.BecomeCompany(request.Cnpj, request.CompanyName, request.StateTaxId);
+            await _customerRepository.UpdateAsync(customer);
+            await _customerRepository.SaveChangesAsync();
+        }
     }
 }

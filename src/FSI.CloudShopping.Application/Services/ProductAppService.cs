@@ -1,17 +1,19 @@
-﻿using FSI.CloudShopping.Application.DTOs;
+﻿using AutoMapper;
+using FSI.CloudShopping.Application.DTOs.Product;
 using FSI.CloudShopping.Application.Interfaces;
-using FSI.CloudShopping.Application.Mappings;
+using FSI.CloudShopping.Domain.Core;
 using FSI.CloudShopping.Domain.Entities;
 using FSI.CloudShopping.Domain.Interfaces;
 using FSI.CloudShopping.Domain.ValueObjects;
 
 namespace FSI.CloudShopping.Application.Services
 {
-    public class ProductAppService : BaseAppService<ProductDTO, Product>, IProductAppService
+    public class ProductAppService : BaseAppService<Product, ProductDTO>, IProductAppService
     {
         private readonly IProductRepository _productRepository;
 
-        public ProductAppService(IProductRepository repository) : base(repository)
+        public ProductAppService(IProductRepository repository, IMapper mapper)
+            : base(repository, mapper)
         {
             _productRepository = repository;
         }
@@ -19,17 +21,14 @@ namespace FSI.CloudShopping.Application.Services
         public async Task<ProductDTO?> GetBySkuAsync(string sku)
         {
             var product = await _productRepository.GetBySkuAsync(new SKU(sku));
-            return product == null ? null : MapToDto(product);
+            return Mapper.Map<ProductDTO>(product);
         }
 
         public async Task UpdateStockAsync(int productId, int quantity)
         {
             var product = await _productRepository.GetByIdAsync(productId);
-            if (product == null)
-                throw new KeyNotFoundException($"Produto com ID {productId} não encontrado.");
-
+            if (product == null) throw new DomainException("Produto não encontrado.");
             product.UpdateStock(new Quantity(quantity));
-
             await _productRepository.UpdateAsync(product);
             await _productRepository.SaveChangesAsync();
         }
@@ -37,9 +36,15 @@ namespace FSI.CloudShopping.Application.Services
         public async Task<IEnumerable<ProductDTO>> GetByCategoryIdAsync(int categoryId)
         {
             var products = await _productRepository.GetByCategoryIdAsync(categoryId);
-            return products.Select(MapToDto);
+            return Mapper.Map<IEnumerable<ProductDTO>>(products);
         }
-        protected override Product MapToEntity(ProductDTO dto) => ProductMapping.MapToEntity(dto);
-        protected override ProductDTO MapToDto(Product entity) => ProductMapping.MapToDto(entity);
+
+        public override async Task<ProductDTO> AddAsync(ProductDTO dto)
+        {
+            var product = new Product(new SKU(dto.Sku), dto.Name, new Money(dto.Price), new Quantity(dto.StockQuantity));
+            await _productRepository.AddAsync(product);
+            await _productRepository.SaveChangesAsync();
+            return Mapper.Map<ProductDTO>(product);
+        }
     }
 }

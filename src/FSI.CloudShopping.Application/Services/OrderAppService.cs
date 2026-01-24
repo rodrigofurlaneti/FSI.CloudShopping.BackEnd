@@ -1,39 +1,44 @@
-﻿using FSI.CloudShopping.Application.DTOs;
+﻿using AutoMapper;
+using FSI.CloudShopping.Application.DTOs.Order;
 using FSI.CloudShopping.Application.Interfaces;
-using FSI.CloudShopping.Application.Mappings;
+using FSI.CloudShopping.Domain.Core;
 using FSI.CloudShopping.Domain.Entities;
 using FSI.CloudShopping.Domain.Interfaces;
-using FSI.CloudShopping.Domain.Interfaces.Services;
 
 namespace FSI.CloudShopping.Application.Services
 {
-    public class OrderAppService : BaseAppService<OrderDTO, Order>, IOrderAppService
+    public class OrderAppService : BaseAppService<Order, OrderDTO>, IOrderAppService
     {
-        private readonly IOrderService _domainOrderService;
         private readonly IOrderRepository _orderRepository;
+        private readonly ICartRepository _cartRepository;
 
         public OrderAppService(
-            IOrderRepository repository,
-            IOrderService domainOrderService) : base(repository)
+            IOrderRepository orderRepository,
+            ICartRepository cartRepository,
+            IMapper mapper) : base(orderRepository, mapper) 
         {
-            _domainOrderService = domainOrderService;
-            _orderRepository = repository;
+            _orderRepository = orderRepository;
+            _cartRepository = cartRepository;
         }
-
-        public async Task<OrderDTO> PlaceOrderAsync(int cartId)
+        public async Task<OrderDTO> PlaceOrderAsync(CheckoutRequest request)
         {
-            var order = await _domainOrderService.PlaceOrderAsync(cartId);
+            var cart = await _cartRepository.GetByCustomerIdAsync(request.CustomerId);
+            if (cart == null || !cart.Items.Any())
+                throw new DomainException("Carrinho vazio ou não encontrado.");
+            var order = new Order(request.CustomerId, request.ShippingAddressId, cart.Items);
+            await _orderRepository.AddAsync(order);
+            await _cartRepository.RemoveAsync(cart.Id);
             await _orderRepository.SaveChangesAsync();
-            return order.ToDto();
+            return Mapper.Map<OrderDTO>(order);
         }
-
-        public async Task<IEnumerable<OrderDTO>> GetOrdersByCustomerIdAsync(int customerId)
+        public async Task<IEnumerable<OrderDTO>> GetCustomerHistoryAsync(int customerId)
         {
             var orders = await _orderRepository.GetOrdersByCustomerIdAsync(customerId);
-            return orders.Select(o => o.ToDto());
+            return Mapper.Map<IEnumerable<OrderDTO>>(orders);
         }
-
-        protected override Order MapToEntity(OrderDTO dto) => dto.ToEntity();
-        protected override OrderDTO MapToDto(Order entity) => entity.ToDto();
+        public override Task<OrderDTO> AddAsync(OrderDTO dto)
+        {
+            throw new DomainException("Pedidos devem ser criados via PlaceOrderAsync.");
+        }
     }
 }

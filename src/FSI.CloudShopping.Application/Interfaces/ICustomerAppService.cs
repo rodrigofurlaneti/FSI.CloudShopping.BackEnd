@@ -1,11 +1,13 @@
 ﻿using FSI.CloudShopping.Application.DTOs;
+using FSI.CloudShopping.Application.DTOs.Customer;
+
 namespace FSI.CloudShopping.Application.Interfaces
 {
     public interface ICustomerAppService : IBaseAppService<CustomerDTO>
     {
-        Task<CustomerDTO> RegisterAsync(CustomerDTO customerDto);
-        Task<CustomerDTO> GetByIdAsync(int id);
-        Task UpdateAddressAsync(int customerId, AddressDTO addressDto);
-        Task UpdateStatusAsync(int id, bool active);
+        Task RegisterLeadAsync(RegisterLeadRequest request);
+        Task<CustomerDTO?> GetByEmailAsync(string email);
+        Task UpdateToIndividualAsync(RegisterIndividualRequest request);
+        Task UpdateToCompanyAsync(RegisterCompanyRequest request);
     }
 }
