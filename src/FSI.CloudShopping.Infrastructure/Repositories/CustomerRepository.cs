@@ -1,103 +1,78 @@
-﻿using System.Data;
-using System.Text;
-using Microsoft.Data.SqlClient;
-using FSI.CloudShopping.Domain.Entities;
-using FSI.CloudShopping.Domain.ValueObjects;
+﻿using FSI.CloudShopping.Domain.Entities;
 using FSI.CloudShopping.Domain.Interfaces;
-using FSI.CloudShopping.Domain.Core;
-
+using FSI.CloudShopping.Domain.ValueObjects;
+using FSI.CloudShopping.Infrastructure.Data;
+using FSI.CloudShopping.Infrastructure.Mappings;
+using Microsoft.Data.SqlClient;
+using System.Data;
 namespace FSI.CloudShopping.Infrastructure.Repositories
 {
-    public class CustomerRepository : ICustomerRepository
+    public class CustomerRepository : BaseRepository<Customer>, ICustomerRepository
     {
-        private readonly string _connectionString;
+        public CustomerRepository(SqlDbConnector connector) : base(connector) { }
 
-        public CustomerRepository(string connectionString) => _connectionString = connectionString;
-
-        public async Task AddAsync(Customer entity)
+        protected override string ProcInsert => "Procedure_Customer_Insert";
+        protected override string ProcUpdate => "Procedure_Customer_Update";
+        protected override string ProcDelete => "Procedure_Customer_Delete";
+        protected override string ProcGetById => "Procedure_Customer_GetById";
+        protected override string ProcGetAll => "Procedure_Customer_Get";
+        protected string ProcGetByEmail => "Procedure_Customer_GetByEmail";
+        protected string ProcGetByCpf => "Procedure_Customer_GetByCpf";
+        protected string ProcGetByCnpj => "Procedure_Customer_GetByCnpj";
+        public override async Task AddAsync(Customer entity)
         {
-            using var conn = new SqlConnection(_connectionString);
-            using var cmd = CreateCommand("Procedure_Customer_Insert", conn);
-            cmd.Parameters.AddWithValue("@Email", entity.Email.Address);
-            cmd.Parameters.AddWithValue("@PasswordHash", Encoding.UTF8.GetBytes(entity.Password.Hash));
-            cmd.Parameters.AddWithValue("@CustomerType", entity.Document.IsCompany ? "PJ" : "PF");
-            cmd.Parameters.AddWithValue("@TaxId", entity.Document.Number);
-            cmd.Parameters.AddWithValue("@Name", "Nome Mock"); 
-
-            await conn.OpenAsync();
-            entity.GetType().GetProperty("Id")?.SetValue(entity, Convert.ToInt32(await cmd.ExecuteScalarAsync()));
+            using var cmd = await Connector.CreateProcedureCommandAsync(ProcInsert);
+            cmd.Parameters.AddWithValue("@SessionToken", entity.SessionToken);
+            cmd.Parameters.AddWithValue("@CustomerTypeCode", entity.CustomerType.Code);
+            cmd.Parameters.AddWithValue("@IsActive", entity.IsActive);
+            await cmd.ExecuteNonQueryAsync();
         }
-
-        public async Task UpdateAsync(Customer entity)
+        public override async Task UpdateAsync(Customer entity)
         {
-            using var conn = new SqlConnection(_connectionString);
-            using var cmd = CreateCommand("Procedure_Customer_Update", conn);
+            using var cmd = await Connector.CreateProcedureCommandAsync(ProcUpdate);
             cmd.Parameters.AddWithValue("@Id", entity.Id);
-            cmd.Parameters.AddWithValue("@Email", entity.Email.Address);
-            cmd.Parameters.AddWithValue("@CustomerType", entity.Document.IsCompany ? "PJ" : "PF");
-            cmd.Parameters.AddWithValue("@TaxId", entity.Document.Number);
+            cmd.Parameters.AddWithValue("@Email", entity.Email?.Address ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@CustomerTypeCode", entity.CustomerType.Code);
             cmd.Parameters.AddWithValue("@IsActive", entity.IsActive);
 
-            await conn.OpenAsync();
+            AddIndividualParameters(cmd, entity.Individual);
+            AddCompanyParameters(cmd, entity.Company);
+
             await cmd.ExecuteNonQueryAsync();
         }
-
-        public async Task RemoveAsync(int id)
+        private void AddIndividualParameters(SqlCommand cmd, Individual? individual)
         {
-            using var conn = new SqlConnection(_connectionString);
-            using var cmd = CreateCommand("Procedure_Customer_Delete", conn);
-            cmd.Parameters.AddWithValue("@Id", id);
-            await conn.OpenAsync();
-            await cmd.ExecuteNonQueryAsync();
+            cmd.Parameters.AddWithValue("@TaxId", individual?.TaxId.Number ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@FullName", individual?.FullName.FullName ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@BirthDate", individual?.BirthDate ?? (object)DBNull.Value);
         }
-
-        public async Task<Customer?> GetByIdAsync(int id) => await FetchSingle(new SqlParameter("@Id", id));
-        public async Task<Customer?> GetByEmailAsync(Email email) => await FetchSingle(new SqlParameter("@Email", email.Address));
-        public async Task<Customer?> GetByDocumentAsync(TaxId doc) => await FetchSingle(new SqlParameter("@TaxId", doc.Number));
-
-        public async Task<IEnumerable<Customer>> GetAllAsync()
+        private void AddCompanyParameters(SqlCommand cmd, Company? company)
         {
-            var list = new List<Customer>();
-            using var conn = new SqlConnection(_connectionString);
-            using var cmd = CreateCommand("Procedure_Customer_GetByFilter", conn);
-            await conn.OpenAsync();
-            using var r = await cmd.ExecuteReaderAsync();
-            while (await r.ReadAsync()) list.Add(Map(r));
-            return list;
+            cmd.Parameters.AddWithValue("@BusinessTaxId", company?.BusinessTaxId.Number ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@CompanyName", company?.CompanyName ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@StateTaxId", company?.StateTaxId ?? (object)DBNull.Value);
         }
-
-        public async Task<int> SaveChangesAsync() => await Task.FromResult(1);
-
-        private async Task<Customer?> FetchSingle(SqlParameter param)
+        public async Task<Customer?> GetByEmailAsync(Email email)
         {
-            using var conn = new SqlConnection(_connectionString);
-            using var cmd = CreateCommand("Procedure_Customer_GetByFilter", conn);
-            cmd.Parameters.Add(param);
-            await conn.OpenAsync();
-            using var r = await cmd.ExecuteReaderAsync();
-            if (!await r.ReadAsync()) return null;
-            return Map(r);
+            using var cmd = await Connector.CreateProcedureCommandAsync(ProcGetByEmail);
+            cmd.Parameters.AddWithValue("@Email", email.Address);
+            using var reader = await cmd.ExecuteReaderAsync();
+            return await reader.ReadAsync() ? MapToEntity(reader) : null;
         }
-
-        private Customer Map(SqlDataReader r)
+        public async Task<Customer?> GetByIndividualDocumentAsync(string cpf)
         {
-            var customer = new Customer(
-                new Email(r["Email"].ToString()!),
-                new TaxId(r["TaxNumber"].ToString()!),
-                new Password(Encoding.UTF8.GetString((byte[])r["PasswordHash"]))
-            );
-            typeof(Entity).GetProperty("Id")?.SetValue(customer, Convert.ToInt32(r["Id"]));
-            return Sync(customer, Convert.ToBoolean(r["IsActive"]));
+            using var cmd = await Connector.CreateProcedureCommandAsync(ProcGetByCpf);
+            cmd.Parameters.AddWithValue("@Cpf", cpf);
+            using var reader = await cmd.ExecuteReaderAsync();
+            return await reader.ReadAsync() ? MapToEntity(reader) : null;
         }
-
-        private Customer Sync(Customer c, bool active)
+        public async Task<Customer?> GetByCompanyDocumentAsync(string cnpj)
         {
-            if (active) c.Activate();
-            if (!active) c.Deactivate();
-            return c;
+            using var cmd = await Connector.CreateProcedureCommandAsync(ProcGetByCnpj);
+            cmd.Parameters.AddWithValue("@Cnpj", cnpj);
+            using var reader = await cmd.ExecuteReaderAsync();
+            return await reader.ReadAsync() ? MapToEntity(reader) : null;
         }
-
-        private SqlCommand CreateCommand(string p, SqlConnection c) => new(p, c) { CommandType = CommandType.StoredProcedure };
-        public void Dispose() { }
+        protected override Customer MapToEntity(SqlDataReader reader) => reader.ToCustomerEntity();
     }
 }

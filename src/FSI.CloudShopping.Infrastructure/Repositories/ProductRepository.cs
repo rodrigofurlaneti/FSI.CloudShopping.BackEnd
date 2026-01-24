@@ -1,112 +1,86 @@
-﻿using System.Data;
-using Microsoft.Data.SqlClient;
-using FSI.CloudShopping.Domain.Entities;
-using FSI.CloudShopping.Domain.ValueObjects;
+﻿using FSI.CloudShopping.Domain.Entities;
 using FSI.CloudShopping.Domain.Interfaces;
+using FSI.CloudShopping.Domain.ValueObjects;
 using FSI.CloudShopping.Infrastructure.Data;
-using FSI.CloudShopping.Domain.Core;
-
+using FSI.CloudShopping.Infrastructure.Mappings;
+using Microsoft.Data.SqlClient;
+using System.Data;
 namespace FSI.CloudShopping.Infrastructure.Repositories
 {
-    public class ProductRepository : IProductRepository
+    public class ProductRepository : BaseRepository<Product>, IProductRepository
     {
-        private readonly SqlDbConnector _connector;
-
-        public ProductRepository(string connectionString) => _connector = new SqlDbConnector(connectionString);
-
-        public async Task AddAsync(Product entity)
+        public ProductRepository(SqlDbConnector connector) : base(connector) { }
+        protected override string ProcInsert => "Procedure_Product_Insert";
+        protected override string ProcUpdate => "Procedure_Product_Update";
+        protected override string ProcDelete => "Procedure_Product_Delete";
+        protected override string ProcGetById => "Procedure_Product_GetById";
+        protected override string ProcGetAll => "Procedure_Product_Get";
+        protected string ProcGetBySku => "Procedure_Product_GetBySku";
+        protected string ProcGetByCategoryId => "Procedure_Product_GetByCategoryId";
+        protected string ProcGetByAvailable => "Procedure_Product_GetAvailable";
+        protected string ProcGetLowStock => "Procedure_Product_GetLowStock";
+        public override async Task AddAsync(Product entity)
         {
-            using var cmd = await _connector.CreateProcedureCommandAsync("Procedure_Product_Insert");
-            MapEntityToParameters(entity, cmd.Parameters);
+            using var cmd = await Connector.CreateProcedureCommandAsync(ProcInsert);
+            AddCommonParameters(cmd, entity);
             await cmd.ExecuteNonQueryAsync();
         }
-
-        public async Task UpdateAsync(Product entity)
+        public override async Task UpdateAsync(Product entity)
         {
-            using var cmd = await _connector.CreateProcedureCommandAsync("Procedure_Product_Update");
+            using var cmd = await Connector.CreateProcedureCommandAsync(ProcUpdate);
             cmd.Parameters.AddWithValue("@Id", entity.Id);
-            MapEntityToParameters(entity, cmd.Parameters);
+            AddCommonParameters(cmd, entity);
             await cmd.ExecuteNonQueryAsync();
         }
-
-        public async Task RemoveAsync(int id)
-        {
-            using var cmd = await _connector.CreateProcedureCommandAsync("Procedure_Product_Delete");
-            cmd.Parameters.AddWithValue("@Id", id);
-            await cmd.ExecuteNonQueryAsync();
-        }
-
-        public async Task<Product?> GetByIdAsync(int id)
-        {
-            using var cmd = await _connector.CreateProcedureCommandAsync("Procedure_Product_GetById");
-            cmd.Parameters.AddWithValue("@Id", id);
-            using var reader = await cmd.ExecuteReaderAsync();
-            return await MapSingleProduct(reader);
-        }
-
         public async Task<Product?> GetBySkuAsync(SKU sku)
         {
-            using var cmd = await _connector.CreateProcedureCommandAsync("Procedure_Product_GetBySku");
+            using var cmd = await Connector.CreateProcedureCommandAsync(ProcGetBySku);
             cmd.Parameters.AddWithValue("@Sku", sku.Code);
             using var reader = await cmd.ExecuteReaderAsync();
-            return await MapSingleProduct(reader);
+            return await reader.ReadAsync() ? MapToEntity(reader) : null;
         }
-
-        public async Task<IEnumerable<Product>> GetAllAsync()
-        {
-            using var cmd = await _connector.CreateProcedureCommandAsync("Procedure_Product_GetAll");
-            using var reader = await cmd.ExecuteReaderAsync();
-            return await MapCollection(reader);
-        }
-
         public async Task<IEnumerable<Product>> GetByCategoryIdAsync(int categoryId)
         {
-            using var cmd = await _connector.CreateProcedureCommandAsync("Procedure_Product_GetByCategoryId");
-            cmd.Parameters.AddWithValue("@CategoryId", categoryId);
-            using var reader = await cmd.ExecuteReaderAsync();
-            return await MapCollection(reader);
-        }
-
-        private async Task<Product?> MapSingleProduct(SqlDataReader reader)
-        {
-            if (!await reader.ReadAsync()) return null;
-            return LoadFromReader(reader);
-        }
-
-        private async Task<IEnumerable<Product>> MapCollection(SqlDataReader reader)
-        {
             var products = new List<Product>();
-            while (await reader.ReadAsync())
-            {
-                products.Add(LoadFromReader(reader));
-            }
+            using var cmd = await Connector.CreateProcedureCommandAsync(ProcGetByCategoryId);
+            cmd.Parameters.AddWithValue("@CategoryId", categoryId);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync()) products.Add(MapToEntity(reader));
             return products;
         }
 
-        private Product LoadFromReader(SqlDataReader reader)
+        public async Task<IEnumerable<Product>> GetAvailableProductsAsync()
         {
-            var product = new Product(
-                new SKU(reader["Sku"].ToString()!),
-                reader["Name"].ToString()!,
-                new Money(Convert.ToDecimal(reader["Price"])),
-                new Quantity(Convert.ToInt32(reader["Stock"]))
-            );
-            var idProperty = typeof(Entity).GetProperty("Id");
-            idProperty?.SetValue(product, Convert.ToInt32(reader["Id"]));
+            var products = new List<Product>();
+            using var cmd = await Connector.CreateProcedureCommandAsync(ProcGetByAvailable);
 
-            return product;
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync()) products.Add(MapToEntity(reader));
+            return products;
         }
 
-        private void MapEntityToParameters(Product p, SqlParameterCollection col)
+        public async Task<IEnumerable<Product>> GetLowStockProductsAsync(int threshold)
         {
-            col.AddWithValue("@Sku", p.Sku.Code);
-            col.AddWithValue("@Name", p.Name);
-            col.AddWithValue("@Price", p.Price.Value);
-            col.AddWithValue("@Stock", p.Stock.Value);
+            var products = new List<Product>();
+            using var cmd = await Connector.CreateProcedureCommandAsync(ProcGetLowStock);
+            cmd.Parameters.AddWithValue("@Threshold", threshold);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync()) products.Add(MapToEntity(reader));
+            return products;
         }
 
-        public async Task<int> SaveChangesAsync() => await Task.FromResult(1);
-
-        public void Dispose() => _connector.Dispose();
+        private void AddCommonParameters(SqlCommand cmd, Product entity)
+        {
+            cmd.Parameters.AddWithValue("@Sku", entity.Sku.Code);
+            cmd.Parameters.AddWithValue("@Name", entity.Name);
+            cmd.Parameters.AddWithValue("@Price", entity.Price.Value);
+            cmd.Parameters.AddWithValue("@Stock", entity.Stock.Value);
+        }
+        protected override Product MapToEntity(SqlDataReader reader)
+        {
+            return reader.ToProductEntity();
+        }
     }
 }
