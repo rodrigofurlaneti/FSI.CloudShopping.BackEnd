@@ -4,21 +4,19 @@ namespace FSI.CloudShopping.Domain.Entities
 {
     public class Cart : Entity
     {
-        public VisitorToken? VisitorToken { get; private set; }
-        public int? CustomerId { get; private set; }
+        public int CustomerId { get; private set; }
         public DateTime UpdatedAt { get; private set; }
+
         private readonly List<CartItem> _items = new();
         public IReadOnlyCollection<CartItem> Items => _items;
         protected Cart() { }
-        public Cart(VisitorToken token)
-        {
-            VisitorToken = token;
-            Touch();
-        }
         public Cart(int customerId)
         {
+            if (customerId <= 0)
+                throw new DomainException("O carrinho deve pertencer a um cliente válido.");
+
             CustomerId = customerId;
-            Touch(); 
+            Touch();
         }
         public void AddOrUpdateItem(int productId, Quantity quantity, Money price)
         {
@@ -29,7 +27,7 @@ namespace FSI.CloudShopping.Domain.Entities
             }
             else
             {
-                item.UpdateQuantity(quantity);
+                item.UpdateQuantity(new Quantity(item.Quantity.Value + quantity.Value));
             }
 
             Touch();
@@ -37,14 +35,18 @@ namespace FSI.CloudShopping.Domain.Entities
         public void RemoveItem(int productId)
         {
             var item = _items.FirstOrDefault(x => x.ProductId == productId);
-
             if (item != null)
             {
                 _items.Remove(item);
-                Touch(); 
+                Touch();
             }
         }
-        public bool IsExpired() => UpdatedAt < DateTime.UtcNow.AddMonths(-1);
-        private void Touch() => UpdatedAt = DateTime.UtcNow;
+        public bool IsExpired() => UpdatedAt < DateTime.Now.AddDays(-30);
+        private void Touch() => UpdatedAt = DateTime.Now;
+        public Money GetTotal()
+        {
+            decimal total = _items.Sum(x => x.Quantity.Value * x.UnitPrice.Value);
+            return new Money(total);
+        }
     }
 }

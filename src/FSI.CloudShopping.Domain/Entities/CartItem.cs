@@ -11,14 +11,16 @@ namespace FSI.CloudShopping.Domain.Entities
         protected CartItem() { }
         public CartItem(int productId, Quantity quantity, Money unitPrice)
         {
+            if (productId <= 0) throw new DomainException("Produto inválido.");
+
             ProductId = productId;
             Quantity = quantity;
             UnitPrice = unitPrice;
         }
-        public void UpdateQuantity(Quantity additionalQuantity)
+        public void UpdateQuantity(Quantity newQuantity)
         {
-            Quantity = new Quantity(Quantity.Value + additionalQuantity.Value);
+            Quantity = newQuantity;
         }
-        public Money TotalPrice => UnitPrice.Multiply(Quantity.Value);
+        public Money TotalPrice => new Money(UnitPrice.Value * Quantity.Value);
     }
 }

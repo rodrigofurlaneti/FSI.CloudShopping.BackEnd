@@ -11,23 +11,38 @@ namespace FSI.CloudShopping.Domain.Entities
         protected Product() { }
         public Product(SKU sku, string name, Money price, Quantity stock)
         {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new DomainException("O nome do produto é obrigatório.");
+
             Sku = sku;
             Name = name;
             Price = price;
             Stock = stock;
         }
+
         public void UpdateStock(Quantity newQuantity)
         {
             if (newQuantity.Value < 0)
                 throw new DomainException("A quantidade de estoque não pode ser negativa.");
+
             Stock = newQuantity;
         }
-        public void UpdatePrice(Money newPrice) => Price = newPrice;
+
+        public void UpdatePrice(Money newPrice)
+        {
+            Price = newPrice;
+        }
+
         public void DebitStock(Quantity quantity)
         {
             if (Stock.Value < quantity.Value)
                 throw new DomainException($"Estoque insuficiente para o produto {Name}.");
             Stock = new Quantity(Stock.Value - quantity.Value);
+        }
+
+        public void CreditStock(Quantity quantity)
+        {
+            Stock = new Quantity(Stock.Value + quantity.Value);
         }
     }
 }

@@ -8,7 +8,7 @@ namespace FSI.CloudShopping.Domain.Entities
         public PersonName Name { get; private set; }
         public Email Email { get; private set; }
         public Phone Phone { get; private set; }
-        public string Position { get; private set; } 
+        public string Position { get; private set; }
         protected Contact() { }
         public Contact(int customerId, PersonName name, Email email, Phone phone, string position)
         {

@@ -6,5 +6,7 @@ namespace FSI.CloudShopping.Domain.Interfaces
     {
         Task<Product?> GetBySkuAsync(SKU sku);
         Task<IEnumerable<Product>> GetByCategoryIdAsync(int categoryId);
+        Task<IEnumerable<Product>> GetAvailableProductsAsync();
+        Task<IEnumerable<Product>> GetLowStockProductsAsync(int threshold);
     }
 }

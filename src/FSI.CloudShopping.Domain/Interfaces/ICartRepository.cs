@@ -4,8 +4,8 @@ namespace FSI.CloudShopping.Domain.Interfaces
 {
     public interface ICartRepository : IRepository<Cart>
     {
-        Task<Cart?> GetByVisitorTokenAsync(VisitorToken token);
-        Task<Cart?> GetByCustomerIdAsync(int customerId);
-        Task<IEnumerable<Cart>> GetExpiredCartsAsync(DateTime expirationDate);
+        Task<Customer?> GetByEmailAsync(Email email);
+        Task<Customer?> GetBySessionTokenAsync(Guid token);
+        Task<IEnumerable<Customer>> GetAllCompaniesAsync();
     }
 }

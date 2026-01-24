@@ -5,6 +5,7 @@ namespace FSI.CloudShopping.Domain.Interfaces
     public interface ICustomerRepository : IRepository<Customer>
     {
         Task<Customer?> GetByEmailAsync(Email email);
-        Task<Customer?> GetByDocumentAsync(TaxId document);
+        Task<Customer?> GetByIndividualDocumentAsync(string cpf);
+        Task<Customer?> GetByCompanyDocumentAsync(string cnpj);
     }
 }
