@@ -12,10 +12,18 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "FSI.CloudShopping API", Version = "v1" });
 });
+builder.Services.AddCors(options => {
+    options.AddPolicy("ConectaStorePolicy", policy => {
+        policy.WithOrigins("http://localhost:4173", "http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "FSI.CloudShopping v1"));
 app.UseHttpsRedirection();
+app.UseCors("ConectaStorePolicy");
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
