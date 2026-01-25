@@ -22,6 +22,8 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
         public override async Task AddAsync(Customer entity)
         {
             using var cmd = await Connector.CreateProcedureCommandAsync(ProcInsert);
+            cmd.Parameters.AddWithValue("@Email", entity.Email?.Address ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@PasswordHash", entity.Password?.Hash ?? (object)DBNull.Value); // O .Hash é string
             cmd.Parameters.AddWithValue("@SessionToken", entity.SessionToken);
             cmd.Parameters.AddWithValue("@CustomerTypeCode", entity.CustomerType.Code);
             cmd.Parameters.AddWithValue("@IsActive", entity.IsActive);
@@ -32,12 +34,11 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
             using var cmd = await Connector.CreateProcedureCommandAsync(ProcUpdate);
             cmd.Parameters.AddWithValue("@Id", entity.Id);
             cmd.Parameters.AddWithValue("@Email", entity.Email?.Address ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@PasswordHash", entity.Password?.Hash ?? (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@CustomerTypeCode", entity.CustomerType.Code);
             cmd.Parameters.AddWithValue("@IsActive", entity.IsActive);
-
             AddIndividualParameters(cmd, entity.Individual);
             AddCompanyParameters(cmd, entity.Company);
-
             await cmd.ExecuteNonQueryAsync();
         }
         private void AddIndividualParameters(SqlCommand cmd, Individual? individual)

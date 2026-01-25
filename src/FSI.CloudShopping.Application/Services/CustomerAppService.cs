@@ -11,11 +11,13 @@ namespace FSI.CloudShopping.Application.Services
     public class CustomerAppService : BaseAppService<Customer, CustomerDTO>, ICustomerAppService
     {
         private readonly ICustomerRepository _customerRepository;
-
-        public CustomerAppService(ICustomerRepository customerRepository, IMapper mapper)
+        private readonly IPasswordHasher _passwordHasher;
+        public CustomerAppService(ICustomerRepository customerRepository, IMapper mapper, 
+            IPasswordHasher passwordHasher)
             : base(customerRepository, mapper)
         {
             _customerRepository = customerRepository;
+            _passwordHasher = passwordHasher;
         }
 
         public override async Task<CustomerDTO> AddAsync(CustomerDTO dto)
@@ -43,10 +45,25 @@ namespace FSI.CloudShopping.Application.Services
 
         public async Task RegisterLeadAsync(RegisterLeadRequest request)
         {
+            var existingCustomer = await _customerRepository.GetByEmailAsync(new Email(request.Email));
+            if (existingCustomer != null)
+            {
+                throw new DomainException("Este e-mail já está em uso por outro cliente.");
+            }
+            var passwordHash = _passwordHasher.HashPassword(request.Password);
+            var securePassword = new Password(passwordHash);
             var customer = await _customerRepository.GetByIdAsync(request.CustomerId);
-            if (customer == null) throw new DomainException("Cliente não encontrado.");
-            customer.BecomeLead(new Email(request.Email), new Password(request.Password));
-            await _customerRepository.UpdateAsync(customer);
+            if (customer == null)
+            {
+                customer = new Customer(Guid.NewGuid());
+                customer.BecomeLead(new Email(request.Email), securePassword);
+                await _customerRepository.AddAsync(customer);
+            }
+            else
+            {
+                customer.BecomeLead(new Email(request.Email), securePassword);
+                await _customerRepository.UpdateAsync(customer);
+            }
             await _customerRepository.SaveChangesAsync();
         }
 

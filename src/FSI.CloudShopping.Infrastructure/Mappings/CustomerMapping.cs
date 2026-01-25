@@ -2,7 +2,6 @@
 using Microsoft.Data.SqlClient;
 using FSI.CloudShopping.Domain.Entities;
 using FSI.CloudShopping.Domain.ValueObjects;
-
 namespace FSI.CloudShopping.Infrastructure.Mappings
 {
     public static class CustomerMapping
@@ -12,7 +11,8 @@ namespace FSI.CloudShopping.Infrastructure.Mappings
             var id = reader.GetInt32(reader.GetOrdinal("Id"));
             var sessionToken = reader.GetGuid(reader.GetOrdinal("SessionToken"));
             var emailStr = reader["Email"] != DBNull.Value ? reader["Email"].ToString() : null;
-            var typeCode = reader["CustomerTypeCode"]?.ToString() ?? "Guest";
+            var passwordHash = reader["PasswordHash"] != DBNull.Value ? reader["PasswordHash"].ToString() : null;
+            var typeCode = reader["CustomerTypeCode"]?.ToString();
             var isActive = reader.GetBoolean(reader.GetOrdinal("IsActive"));
             var customer = new Customer(sessionToken);
             var type = typeof(Customer);
@@ -21,6 +21,8 @@ namespace FSI.CloudShopping.Infrastructure.Mappings
             type.GetProperty("CustomerType")?.SetValue(customer, CustomerType.FromString(typeCode));
             if (!string.IsNullOrEmpty(emailStr))
                 type.GetProperty("Email")?.SetValue(customer, new Email(emailStr));
+            if (!string.IsNullOrEmpty(passwordHash))
+                type.GetProperty("Password")?.SetValue(customer, new Password(passwordHash));
             if (reader["TaxId"] != DBNull.Value)
             {
                 var individual = new Individual(
@@ -36,7 +38,7 @@ namespace FSI.CloudShopping.Infrastructure.Mappings
                 var company = new Company(
                     id,
                     new BusinessTaxId(reader["BusinessTaxId"].ToString()!),
-                    reader["CompanyName"].ToString()!,
+                    reader["CompanyName"].ToString()!, 
                     reader["StateTaxId"]?.ToString()
                 );
                 type.GetProperty("Company")?.SetValue(customer, company);

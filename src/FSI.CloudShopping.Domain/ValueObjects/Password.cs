@@ -13,6 +13,6 @@ namespace FSI.CloudShopping.Domain.ValueObjects
 
             Hash = hash;
         }
-        public override string ToString() => "********"; 
+        public override string ToString() => Hash; 
     }
 }
