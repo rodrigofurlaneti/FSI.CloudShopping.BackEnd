@@ -15,6 +15,7 @@ namespace FSI.CloudShopping.Infrastructure
             if (string.IsNullOrEmpty(connectionString))
                 throw new InvalidOperationException("A ConnectionString 'Production' não foi encontrada no appsettings.json.");
             services.AddScoped(sp => new SqlDbConnector(connectionString));
+            services.AddScoped<IAuthenticationRepository, AuthenticationRepository>();
             services.AddScoped<IPasswordHasher, PasswordHasher>();
             services.AddScoped<IProductRepository, ProductRepository>();
             services.AddScoped<ICustomerRepository, CustomerRepository>();

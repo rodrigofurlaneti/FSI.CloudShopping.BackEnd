@@ -22,8 +22,8 @@ builder.Services.AddCors(options => {
 var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "FSI.CloudShopping v1"));
-app.UseHttpsRedirection();
 app.UseCors("ConectaStorePolicy");
+app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();

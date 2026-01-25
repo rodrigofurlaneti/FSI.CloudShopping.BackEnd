@@ -8,6 +8,7 @@ namespace FSI.CloudShopping.Application
     {
         public static IServiceCollection AddApplication(this IServiceCollection services)
         {
+            services.AddScoped<IAuthenticationAppService, AuthenticationAppService>();
             services.AddScoped<ICustomerAppService, CustomerAppService>();
             services.AddScoped<IProductAppService, ProductAppService>();
             services.AddScoped<IOrderAppService, OrderAppService>();
