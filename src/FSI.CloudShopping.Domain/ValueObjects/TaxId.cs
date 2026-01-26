@@ -1,9 +1,9 @@
 ﻿using FSI.CloudShopping.Domain.Core;
-using FSI.CloudShopping.Domain.ValidationAssistant;
+using System.Linq;
 
 namespace FSI.CloudShopping.Domain.ValueObjects
 {
-    public record TaxId // Focado apenas em CPF
+    public record TaxId
     {
         public string Number { get; }
 
@@ -12,17 +12,46 @@ namespace FSI.CloudShopping.Domain.ValueObjects
             if (string.IsNullOrWhiteSpace(number))
                 throw new DomainException("O CPF não pode ser vazio.");
 
-            Number = new string(number.Where(char.IsDigit).ToArray());
+            // Remove máscara (pontos, traços, espaços)
+            var cleanedNumber = new string(number.Where(char.IsDigit).ToArray());
 
-            if (Number.Length != 11 || Number.Distinct().Count() == 1 || !Validate())
+            if (!Validate(cleanedNumber))
                 throw new DomainException("Número de CPF inválido.");
+
+            Number = cleanedNumber;
         }
 
-        private bool Validate()
+        private static bool Validate(string cpf)
         {
-            int[] m1 = { 10, 9, 8, 7, 6, 5, 4, 3, 2 };
-            int[] m2 = { 11, 10, 9, 8, 7, 6, 5, 4, 3, 2 };
-            return DocumentValidator.Validate(Number, 9, m1, m2);
+            if (cpf.Length != 11) return false;
+
+            if (cpf.Distinct().Count() == 1) return false;
+
+            int[] multiplicador1 = new int[9] { 10, 9, 8, 7, 6, 5, 4, 3, 2 };
+            int[] multiplicador2 = new int[10] { 11, 10, 9, 8, 7, 6, 5, 4, 3, 2 };
+
+            string tempCpf = cpf.Substring(0, 9);
+            int soma = 0;
+
+            for (int i = 0; i < 9; i++)
+                soma += int.Parse(tempCpf[i].ToString()) * multiplicador1[i];
+
+            int resto = soma % 11;
+            resto = resto < 2 ? 0 : 11 - resto;
+
+            string digito = resto.ToString();
+            tempCpf = tempCpf + digito;
+            soma = 0;
+
+            for (int i = 0; i < 10; i++)
+                soma += int.Parse(tempCpf[i].ToString()) * multiplicador2[i];
+
+            resto = soma % 11;
+            resto = resto < 2 ? 0 : 11 - resto;
+
+            digito = digito + resto.ToString();
+
+            return cpf.EndsWith(digito);
         }
 
         public override string ToString() => Number;

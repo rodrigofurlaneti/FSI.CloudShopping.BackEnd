@@ -22,45 +22,34 @@ namespace FSI.CloudShopping.Application.Services
         public override async Task<AddressDTO> AddAsync(AddressDTO dto)
         {
             var customer = await _customerRepository.GetByIdAsync(dto.CustomerId);
-            if (customer == null) throw new DomainException("Cliente não encontrado para vincular o endereço.");
-            var address = new Address(
-                dto.CustomerId,
-                dto.AddressType,
-                dto.Street,
-                dto.Number,
-                dto.City,
-                dto.State,
-                dto.ZipCode,
-                dto.IsDefault
-            );
+            if (customer == null) throw new DomainException("Cliente não encontrado.");
+            var address = Mapper.Map<Address>(dto);
             customer.AddAddress(address);
             await _addressRepository.AddAsync(address);
             await _addressRepository.SaveChangesAsync();
-
             return Mapper.Map<AddressDTO>(address);
+        }
+
+        public async Task SetDefaultAddressAsync(int addressId, int customerId)
+        {
+            var addresses = (await _addressRepository.GetByCustomerIdAsync(customerId)).ToList();
+            var addressToSet = addresses.FirstOrDefault(a => a.Id == addressId);
+            if (addressToSet == null)
+                throw new DomainException("Endereço não encontrado ou não pertence ao cliente.");
+            foreach (var addr in addresses)
+            {
+                if (addr.Id == addressId)
+                    addr.SetAsDefault();
+                else
+                    addr.SetNonDefault();
+                await _addressRepository.UpdateAsync(addr);
+            }
+            await _addressRepository.SaveChangesAsync();
         }
         public async Task<IEnumerable<AddressDTO>> GetByCustomerIdAsync(int customerId)
         {
             var addresses = await _addressRepository.GetByCustomerIdAsync(customerId);
             return Mapper.Map<IEnumerable<AddressDTO>>(addresses);
-        }
-        public async Task SetDefaultAddressAsync(int addressId, int customerId)
-        {
-            var customer = await _customerRepository.GetByIdAsync(customerId);
-            if (customer == null) throw new DomainException("Cliente não encontrado.");
-            var address = await _addressRepository.GetByIdAsync(addressId);
-            if (address == null || address.CustomerId != customerId)
-                throw new DomainException("Endereço não pertence ao cliente informado.");
-            address.SetAsDefault();
-            var otherAddresses = await _addressRepository.GetByCustomerIdAsync(customerId);
-            foreach (var addr in otherAddresses.Where(a => a.Id != addressId))
-            {
-                addr.SetNonDefault();
-                await _addressRepository.UpdateAsync(addr);
-            }
-
-            await _addressRepository.UpdateAsync(address);
-            await _addressRepository.SaveChangesAsync();
         }
     }
 }
