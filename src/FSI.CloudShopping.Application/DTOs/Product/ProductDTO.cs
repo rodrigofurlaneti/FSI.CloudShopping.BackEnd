@@ -9,6 +9,7 @@
         public decimal Price { get; init; }
         public int StockQuantity { get; init; }
         public int CategoryId { get; init; }
+        public string ImageUrl { get; set; }
         public bool IsActive { get; init; }
     }
 }

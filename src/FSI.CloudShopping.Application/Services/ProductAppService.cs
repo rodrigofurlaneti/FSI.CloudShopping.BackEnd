@@ -41,7 +41,8 @@ namespace FSI.CloudShopping.Application.Services
 
         public override async Task<ProductDTO> AddAsync(ProductDTO dto)
         {
-            var product = new Product(new SKU(dto.Sku), dto.Name, new Money(dto.Price), new Quantity(dto.StockQuantity));
+            var product = new Product(new SKU(dto.Sku), dto.Name, dto.Description,
+                new Money(dto.Price), new Quantity(dto.StockQuantity));
             await _productRepository.AddAsync(product);
             await _productRepository.SaveChangesAsync();
             return Mapper.Map<ProductDTO>(product);

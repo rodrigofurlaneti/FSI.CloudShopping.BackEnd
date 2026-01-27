@@ -75,6 +75,7 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
         {
             cmd.Parameters.AddWithValue("@Sku", entity.Sku.Code);
             cmd.Parameters.AddWithValue("@Name", entity.Name);
+            cmd.Parameters.AddWithValue("@Description", entity.Description);
             cmd.Parameters.AddWithValue("@Price", entity.Price.Value);
             cmd.Parameters.AddWithValue("@Stock", entity.Stock.Value);
         }
