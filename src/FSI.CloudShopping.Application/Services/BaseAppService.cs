@@ -6,7 +6,7 @@ using FSI.CloudShopping.Domain.Interfaces;
 namespace FSI.CloudShopping.Application.Services
 {
     public abstract class BaseAppService<TEntity, TDTO> : IBaseAppService<TDTO>
-        where TEntity : Entity 
+        where TEntity : Entity
         where TDTO : class
     {
         protected readonly IRepository<TEntity> Repository;
@@ -21,7 +21,8 @@ namespace FSI.CloudShopping.Application.Services
         public virtual async Task<TDTO> AddAsync(TDTO dto)
         {
             var entity = Mapper.Map<TEntity>(dto);
-            await Repository.AddAsync(entity);
+            var generatedId = await Repository.AddAsync(entity);
+            entity.Id = generatedId;
             await Repository.SaveChangesAsync();
             return Mapper.Map<TDTO>(entity);
         }

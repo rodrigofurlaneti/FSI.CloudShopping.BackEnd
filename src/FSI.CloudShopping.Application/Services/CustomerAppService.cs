@@ -12,20 +12,20 @@ namespace FSI.CloudShopping.Application.Services
     {
         private readonly ICustomerRepository _customerRepository;
         private readonly IPasswordHasher _passwordHasher;
+        private readonly ICustomerLocationAppService _customerLocationAppService;
         public CustomerAppService(ICustomerRepository customerRepository, IMapper mapper, 
-            IPasswordHasher passwordHasher)
+            IPasswordHasher passwordHasher, ICustomerLocationAppService customerLocationAppService)
             : base(customerRepository, mapper)
         {
             _customerRepository = customerRepository;
             _passwordHasher = passwordHasher;
+            _customerLocationAppService = customerLocationAppService;
         }
         public async Task<CreateGuestResponse> CreateGuestAsync(CreateGuestRequest request)
         {
-            // 🛡️ Validação defensiva
             if (request is null)
                 throw new ArgumentNullException(nameof(request));
 
-            // 📱 DeviceInfo (Value Object)
             var deviceInfo = new DeviceInfo(
                 request.DeviceInfo.UserAgent,
                 request.DeviceInfo.Platform,
@@ -33,7 +33,6 @@ namespace FSI.CloudShopping.Application.Services
                 request.DeviceInfo.TimeZone
             );
 
-            // 👤 Customer Guest
             var customer = new Customer(
                 sessionToken: Guid.NewGuid(),
                 latitude: request.Latitude.HasValue ? (decimal?)request.Latitude : null,
@@ -41,7 +40,15 @@ namespace FSI.CloudShopping.Application.Services
                 deviceInfo: deviceInfo
             );
 
-            await _customerRepository.AddAsync(customer);
+            var customerId = await _customerRepository.AddAsync(customer);
+
+            if (request.Latitude.HasValue && request.Longitude.HasValue)
+            {
+                await _customerLocationAppService.RequestCustomerLocationAsync(
+                    customerId,
+                    request.Latitude.Value,
+                    request.Longitude.Value);
+            }
 
             return new CreateGuestResponse
             {

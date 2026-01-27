@@ -4,12 +4,14 @@ using FSI.CloudShopping.Infrastructure.Data;
 using FSI.CloudShopping.Infrastructure.Mappings;
 using Microsoft.Data.SqlClient;
 using System.Data;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+
 namespace FSI.CloudShopping.Infrastructure.Repositories
 {
     public class AddressRepository : BaseRepository<Address>, IAddressRepository
     {
         public AddressRepository(SqlDbConnector connector) : base(connector) { }
-
         protected override string ProcInsert => "Procedure_Address_Insert";
         protected override string ProcUpdate => "Procedure_Address_Update";
         protected override string ProcDelete => "Procedure_Address_Delete";
@@ -17,20 +19,24 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
         protected override string ProcGetAll => "Procedure_Address_GetAll";
         protected string ProcGetByCustomer => "Procedure_Address_GetByCustomerId";
         protected string ProcGetDefault => "Procedure_Address_GetDefaultByCustomerId";
-
-        public override async Task AddAsync(Address entity)
+        public override async Task<int> AddAsync(Address entity)
         {
             using var cmd = await Connector.CreateProcedureCommandAsync(ProcInsert);
-            AddCommonParameters(cmd, entity);
-            await cmd.ExecuteNonQueryAsync();
+            SetInsertParameters(cmd, entity);
+            var result = await cmd.ExecuteScalarAsync();
+            int generatedId = Convert.ToInt32(result);
+            entity.Id = generatedId; 
+            return generatedId;
         }
+
         public override async Task UpdateAsync(Address entity)
         {
             using var cmd = await Connector.CreateProcedureCommandAsync(ProcUpdate);
             cmd.Parameters.AddWithValue("@Id", entity.Id);
-            AddCommonParameters(cmd, entity);
+            SetInsertParameters(cmd, entity);
             await cmd.ExecuteNonQueryAsync();
         }
+
         public async Task<IEnumerable<Address>> GetByCustomerIdAsync(int customerId)
         {
             var addresses = new List<Address>();
@@ -43,6 +49,7 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
 
             return addresses;
         }
+
         public async Task<Address?> GetDefaultAddressAsync(int customerId)
         {
             using var cmd = await Connector.CreateProcedureCommandAsync(ProcGetDefault);
@@ -51,7 +58,8 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
             using var reader = await cmd.ExecuteReaderAsync();
             return await reader.ReadAsync() ? MapToEntity(reader) : null;
         }
-        private void AddCommonParameters(SqlCommand cmd, Address entity)
+
+        protected override void SetInsertParameters(SqlCommand cmd, Address entity)
         {
             cmd.Parameters.AddWithValue("@CustomerId", entity.CustomerId);
             cmd.Parameters.AddWithValue("@AddressType", entity.AddressType);
@@ -63,6 +71,7 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
             cmd.Parameters.AddWithValue("@ZipCode", entity.ZipCode);
             cmd.Parameters.AddWithValue("@IsDefault", entity.IsDefault);
         }
+
         protected override Address MapToEntity(SqlDataReader reader) => reader.ToAddressEntity();
     }
 }
