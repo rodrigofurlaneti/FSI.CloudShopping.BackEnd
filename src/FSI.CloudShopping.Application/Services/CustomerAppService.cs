@@ -19,6 +19,36 @@ namespace FSI.CloudShopping.Application.Services
             _customerRepository = customerRepository;
             _passwordHasher = passwordHasher;
         }
+        public async Task<CreateGuestResponse> CreateGuestAsync(CreateGuestRequest request)
+        {
+            // 🛡️ Validação defensiva
+            if (request is null)
+                throw new ArgumentNullException(nameof(request));
+
+            // 📱 DeviceInfo (Value Object)
+            var deviceInfo = new DeviceInfo(
+                request.DeviceInfo.UserAgent,
+                request.DeviceInfo.Platform,
+                request.DeviceInfo.Language,
+                request.DeviceInfo.TimeZone
+            );
+
+            // 👤 Customer Guest
+            var customer = new Customer(
+                sessionToken: Guid.NewGuid(),
+                latitude: request.Latitude.HasValue ? (decimal?)request.Latitude : null,
+                longitude: request.Longitude.HasValue ? (decimal?)request.Longitude : null,
+                deviceInfo: deviceInfo
+            );
+
+            await _customerRepository.AddAsync(customer);
+
+            return new CreateGuestResponse
+            {
+                SessionToken = customer.SessionToken,
+                ExpiresAt = DateTime.UtcNow.AddHours(2)
+            };
+        }
 
         public override async Task<CustomerDTO> AddAsync(CustomerDTO dto)
         {

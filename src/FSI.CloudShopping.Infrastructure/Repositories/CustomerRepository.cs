@@ -23,10 +23,16 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
         {
             using var cmd = await Connector.CreateProcedureCommandAsync(ProcInsert);
             cmd.Parameters.AddWithValue("@Email", entity.Email?.Address ?? (object)DBNull.Value);
-            cmd.Parameters.AddWithValue("@PasswordHash", entity.Password?.Hash ?? (object)DBNull.Value); // O .Hash é string
+            cmd.Parameters.AddWithValue("@PasswordHash", entity.Password?.Hash ?? (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@SessionToken", entity.SessionToken);
             cmd.Parameters.AddWithValue("@CustomerTypeCode", entity.CustomerType.Code);
             cmd.Parameters.AddWithValue("@IsActive", entity.IsActive);
+            cmd.Parameters.AddWithValue("@Latitude", entity.GeoLocation?.Latitude ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@Longitude", entity.GeoLocation?.Longitude ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@UserAgent", entity.DeviceInfo?.UserAgent ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@Platform", entity.DeviceInfo?.Platform ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@Language", entity.DeviceInfo?.Language ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@TimeZone", entity.DeviceInfo?.TimeZone ?? (object)DBNull.Value);
             await cmd.ExecuteNonQueryAsync();
         }
         public override async Task UpdateAsync(Customer entity)
@@ -37,6 +43,12 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
             cmd.Parameters.AddWithValue("@PasswordHash", entity.Password?.Hash ?? (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@CustomerTypeCode", entity.CustomerType.Code);
             cmd.Parameters.AddWithValue("@IsActive", entity.IsActive);
+            cmd.Parameters.AddWithValue("@Latitude", entity.GeoLocation?.Latitude ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@Longitude", entity.GeoLocation?.Longitude ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@UserAgent", entity.DeviceInfo?.UserAgent ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@Platform", entity.DeviceInfo?.Platform ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@Language", entity.DeviceInfo?.Language ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@TimeZone", entity.DeviceInfo?.TimeZone ?? (object)DBNull.Value);
             AddIndividualParameters(cmd, entity.Individual);
             AddCompanyParameters(cmd, entity.Company);
             await cmd.ExecuteNonQueryAsync();

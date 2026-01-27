@@ -11,6 +11,23 @@ namespace FSI.CloudShopping.API.Controllers
         {
             _customerAppService = customerAppService;
         }
+        [HttpPost("guest")]
+        public async Task<ActionResult<CreateGuestResponse>> CreateGuest(
+            [FromBody] CreateGuestRequest request)
+        {
+            var response = await _customerAppService.CreateGuestAsync(request);
+            Response.Cookies.Append(
+                "session_token",
+                response.SessionToken.ToString(),
+                new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Lax,
+                    Expires = response.ExpiresAt
+                });
+            return Ok(response);
+        }
         [HttpPost("register-lead")]
         public async Task<IActionResult> RegisterLead([FromBody] RegisterLeadRequest request)
         {
