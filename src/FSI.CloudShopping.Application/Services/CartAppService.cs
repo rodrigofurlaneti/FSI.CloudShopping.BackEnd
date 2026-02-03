@@ -11,13 +11,33 @@ namespace FSI.CloudShopping.Application.Services
     public class CartAppService : BaseAppService<Cart, CartDTO>, ICartAppService
     {
         private readonly ICartRepository _cartRepository;
+        private readonly IProductRepository _productRepository;
+        private readonly ICustomerRepository _customerRepository;
+        private readonly IMapper _mapper;
 
-        public CartAppService(ICartRepository cartRepository, IMapper mapper)
+        public CartAppService(ICartRepository cartRepository, IProductRepository productRepository,
+            ICustomerRepository customerRepository, IMapper mapper)
             : base(cartRepository, mapper)
         {
             _cartRepository = cartRepository;
+            _productRepository = productRepository;
+            _customerRepository = customerRepository;
+            _mapper = mapper;
         }
-
+        public async Task<CartDTO> AddItemAsync(Guid sessionToken, int productId, int quantity)
+        {
+            var customerId = await _customerRepository.GetIdBySessionTokenAsync(sessionToken);
+            if (customerId == 0)
+                throw new DomainException("Sessão expirada ou inválida.");
+            var cart = await _cartRepository.GetByCustomerIdAsync(customerId) ?? new Cart(customerId);
+            var product = await _productRepository.GetByIdAsync(productId);
+            if (product == null) throw new DomainException("Produto não encontrado.");
+            cart.AddOrUpdateItem(productId, new Quantity(quantity), new Money(product.Price.Value));
+            if (cart.Id == 0) await _cartRepository.AddAsync(cart);
+            else await _cartRepository.UpdateAsync(cart);
+            await _cartRepository.SaveChangesAsync();
+            return _mapper.Map<CartDTO>(cart); 
+        }
         public async Task MergeAfterLoginAsync(Guid visitorToken, int customerId)
         {
             var visitorCart = await _cartRepository.GetBySessionTokenAsync(visitorToken);

@@ -7,5 +7,6 @@ namespace FSI.CloudShopping.Domain.Interfaces
         Task<Customer?> GetByEmailAsync(Email email);
         Task<Customer?> GetByIndividualDocumentAsync(string cpf);
         Task<Customer?> GetByCompanyDocumentAsync(string cnpj);
+        Task<int> GetIdBySessionTokenAsync(Guid token);
     }
 }

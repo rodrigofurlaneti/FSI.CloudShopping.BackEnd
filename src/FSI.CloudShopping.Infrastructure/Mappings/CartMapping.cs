@@ -28,8 +28,11 @@ namespace FSI.CloudShopping.Infrastructure.Mappings
             var productId = reader.GetInt32(reader.GetOrdinal("ProductId"));
             var quantityValue = reader.GetInt32(reader.GetOrdinal("Quantity"));
             var priceValue = Convert.ToDecimal(reader["UnitPrice"]);
+            var itemId = reader.GetInt32(reader.GetOrdinal("Id"));
             var item = new CartItem(productId, new Quantity(quantityValue), new Money(priceValue));
-            typeof(CartItem).GetProperty("Id")?.SetValue(item, reader.GetInt32(reader.GetOrdinal("Id")));
+            typeof(CartItem)
+                .GetProperty("Id", BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
+                ?.SetValue(item, itemId);
             var itemsField = typeof(Cart).GetField("_items", BindingFlags.Instance | BindingFlags.NonPublic);
             var itemsList = (List<CartItem>)itemsField?.GetValue(cart)!;
             itemsList.Add(item);

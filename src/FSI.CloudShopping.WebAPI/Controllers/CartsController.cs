@@ -10,6 +10,12 @@ namespace FSI.CloudShopping.API.Controllers
         {
             _cartAppService = cartAppService;
         }
+        [HttpPost("add-item")]
+        public async Task<IActionResult> AddItem([FromBody] AddCartItemDTO request)
+        {
+            var cart = await _cartAppService.AddItemAsync(request.SessionToken, request.ProductId, request.Quantity);
+            return Ok(cart);
+        }
         [HttpPost("merge")]
         public async Task<IActionResult> Merge([FromQuery] Guid visitorToken, [FromQuery] int customerId)
         {

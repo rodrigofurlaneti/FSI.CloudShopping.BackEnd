@@ -121,5 +121,6 @@ namespace FSI.CloudShopping.Application.Services
             await _customerRepository.UpdateAsync(customer);
             await _customerRepository.SaveChangesAsync();
         }
+
     }
 }

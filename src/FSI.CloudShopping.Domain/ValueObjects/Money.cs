@@ -3,7 +3,7 @@ namespace FSI.CloudShopping.Domain.ValueObjects
 {
     public record Money
     {
-        public decimal Value { get; }
+        public decimal Value { get; set; }
         public Money(decimal value)
         {
             if (value < 0)

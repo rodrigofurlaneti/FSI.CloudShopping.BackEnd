@@ -8,5 +8,6 @@ namespace FSI.CloudShopping.Domain.Interfaces
         Task<Cart?> GetBySessionTokenAsync(Guid token);
         Task<Cart?> GetByEmailAsync(Email email);
         Task UpdateItemsAsync(Cart cart);
+        //Task AddItemAsync(int cartId, CartItem item);
     }
 }

@@ -5,6 +5,7 @@ namespace FSI.CloudShopping.Application.Interfaces
 {
     public interface ICartAppService : IBaseAppService<CartDTO>
     {
+        Task<CartDTO> AddItemAsync(Guid sessionToken, int productId, int quantity);
         Task MergeAfterLoginAsync(Guid visitorToken, int customerId);
         Task ClearCartAsync(string token);
     }

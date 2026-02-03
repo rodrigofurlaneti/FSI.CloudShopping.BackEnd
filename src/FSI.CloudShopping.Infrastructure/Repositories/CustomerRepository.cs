@@ -22,8 +22,8 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
         protected string ProcGetByEmail => "Procedure_Customer_GetByEmail";
         protected string ProcGetByCpf => "Procedure_Customer_GetByCpf";
         protected string ProcGetByCnpj => "Procedure_Customer_GetByCnpj";
+        protected string ProcGetByToken => "Procedure_Customer_GetIdByToken";
 
-        // ✅ Implementa AddAsync retornando Task<int> e usando SetId
         public override async Task<int> AddAsync(Customer entity)
         {
             using var cmd = await Connector.CreateProcedureCommandAsync(ProcInsert);
@@ -46,7 +46,6 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
             await cmd.ExecuteNonQueryAsync();
         }
 
-        // ✅ Implementa SetInsertParameters obrigatório pelo BaseRepository
         protected override void SetInsertParameters(SqlCommand cmd, Customer entity)
         {
             cmd.Parameters.AddWithValue("@Email", entity.Email?.Address ?? (object)DBNull.Value);
@@ -98,6 +97,13 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
             cmd.Parameters.AddWithValue("@Cnpj", cnpj);
             using var reader = await cmd.ExecuteReaderAsync();
             return await reader.ReadAsync() ? MapToEntity(reader) : null;
+        }
+        public async Task<int> GetIdBySessionTokenAsync(Guid token)
+        {
+            using var cmd = await Connector.CreateProcedureCommandAsync(ProcGetByToken);
+            cmd.Parameters.AddWithValue("@Token", token);
+            var result = await cmd.ExecuteScalarAsync();
+            return result != null ? Convert.ToInt32(result) : 0;
         }
 
         protected override Customer MapToEntity(SqlDataReader reader) => reader.ToCustomerEntity();
