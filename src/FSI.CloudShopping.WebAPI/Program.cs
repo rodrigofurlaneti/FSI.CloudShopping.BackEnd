@@ -14,7 +14,11 @@ builder.Services.AddSwaggerGen(c =>
 });
 builder.Services.AddCors(options => {
     options.AddPolicy("ConectaStorePolicy", policy => {
-        policy.WithOrigins("http://localhost:4173", "http://localhost:5173")
+        policy.WithOrigins(
+                "http://localhost:4173",
+                "http://localhost:5173",
+                "https://fsi-cloudshopping-frontend.onrender.com" 
+              )
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
