@@ -1,12 +1,12 @@
 ﻿using FSI.CloudShopping.Domain.Core;
 using FSI.CloudShopping.Domain.ValueObjects;
+
 namespace FSI.CloudShopping.Domain.Entities
 {
     public class Cart : Entity
     {
         public int CustomerId { get; private set; }
         public DateTime UpdatedAt { get; private set; }
-
         private readonly List<CartItem> _items = new();
         public IReadOnlyCollection<CartItem> Items => _items;
         protected Cart() { }
@@ -14,22 +14,22 @@ namespace FSI.CloudShopping.Domain.Entities
         {
             if (customerId <= 0)
                 throw new DomainException("O carrinho deve pertencer a um cliente válido.");
-
             CustomerId = customerId;
             Touch();
         }
-        public void AddOrUpdateItem(int productId, Quantity quantity, Money price)
+        public void AddOrUpdateItem(int productId, Quantity quantity, Money price, string name = null, string imageUrl = null)
         {
             var item = _items.FirstOrDefault(x => x.ProductId == productId);
             if (item is null)
             {
-                _items.Add(new CartItem(productId, quantity, price));
+                _items.Add(new CartItem(productId, quantity, price, name, imageUrl));
             }
             else
             {
                 item.UpdateQuantity(new Quantity(item.Quantity.Value + quantity.Value));
+                if (!string.IsNullOrEmpty(name))
+                    item.UpdateDisplayInfo(name, imageUrl);
             }
-
             Touch();
         }
         public void RemoveItem(int productId)

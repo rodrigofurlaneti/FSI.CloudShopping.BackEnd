@@ -14,7 +14,9 @@ namespace FSI.CloudShopping.Application.Mappings
                 .ForMember(dest => dest.Quantity, opt => opt.MapFrom(src => src.Quantity.Value))
                 .ForMember(dest => dest.UnitPrice, opt => opt.MapFrom(src => src.UnitPrice.Value))
                 .ForMember(dest => dest.SubTotal, opt => opt.MapFrom(src => src.TotalPrice.Value))
-                .ForMember(dest => dest.TotalPrice, opt => opt.MapFrom(src => src.TotalPrice.Value));
+                .ForMember(dest => dest.TotalPrice, opt => opt.MapFrom(src => src.TotalPrice.Value))
+                .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
+                .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom(src => src.ImageUrl));
         }
     }
 }
