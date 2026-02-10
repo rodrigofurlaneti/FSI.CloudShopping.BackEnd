@@ -24,6 +24,15 @@ namespace FSI.CloudShopping.Application.Services
             _customerRepository = customerRepository;
             _mapper = mapper;
         }
+        public async Task<CartDTO> GetByTokenAsync(Guid sessionToken)
+        {
+            var cart = await _cartRepository.GetBySessionTokenAsync(sessionToken);
+
+            if (cart == null)
+                return null; // Ou throw new DomainException("Carrinho não encontrado");
+
+            return _mapper.Map<CartDTO>(cart);
+        }
         public async Task<CartDTO> AddItemAsync(Guid sessionToken, int productId, int quantity)
         {
             var customerId = await _customerRepository.GetIdBySessionTokenAsync(sessionToken);

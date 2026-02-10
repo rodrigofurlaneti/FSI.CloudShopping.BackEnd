@@ -10,6 +10,16 @@ namespace FSI.CloudShopping.API.Controllers
         {
             _cartAppService = cartAppService;
         }
+        [HttpGet("{token}")]
+        public async Task<IActionResult> GetByToken(Guid token)
+        {
+            var cart = await _cartAppService.GetByTokenAsync(token);
+
+            if (cart == null)
+                return NotFound(new { message = "Carrinho não encontrado para este token." });
+
+            return Ok(cart);
+        }
         [HttpPost("add-item")]
         public async Task<IActionResult> AddItem([FromBody] AddCartItemDTO request)
         {
