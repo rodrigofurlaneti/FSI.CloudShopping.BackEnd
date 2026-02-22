@@ -1,5 +1,8 @@
 ﻿using FSI.CloudShopping.Application.DTOs.Authentication; // Verifique se este caminho existe
 using FSI.CloudShopping.Application.Interfaces;
+using FSI.CloudShopping.Application.Services;
+using FSI.CloudShopping.Domain.Core;
+using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FSI.CloudShopping.API.Controllers
@@ -28,6 +31,20 @@ namespace FSI.CloudShopping.API.Controllers
                 token = Guid.NewGuid().ToString(),
                 customerName = request.Email.Split('@')[0]
             });
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] FSI.CloudShopping.Application.DTOs.Authentication.ResetPasswordRequest request)
+        {
+            try
+            {
+                await _authenticationAppService.ResetPasswordAsync(request.Email);
+                return Ok(new { message = "Se o e-mail existir em nossa base, uma nova senha foi enviada." });
+            }
+            catch (DomainException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }

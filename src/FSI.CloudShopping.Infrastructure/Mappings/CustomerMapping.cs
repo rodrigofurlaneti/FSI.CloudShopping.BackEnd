@@ -17,6 +17,13 @@ namespace FSI.CloudShopping.Infrastructure.Mappings
             Set(customer, "Id", reader.GetInt32(reader.GetOrdinal("Id")));
             Set(customer, "SessionToken", reader.GetGuid(reader.GetOrdinal("SessionToken")));
             Set(customer, "IsActive", reader.GetBoolean(reader.GetOrdinal("IsActive")));
+
+            // 🔹 Mapeamento da nova coluna de senha temporária
+            if (reader.HasColumn("IsTemporaryPassword"))
+            {
+                Set(customer, "IsTemporaryPassword", reader.GetBoolean(reader.GetOrdinal("IsTemporaryPassword")));
+            }
+
             Set(customer, "CustomerType",
                 CustomerType.FromString(reader["CustomerType"]?.ToString())
             );
@@ -52,7 +59,7 @@ namespace FSI.CloudShopping.Infrastructure.Mappings
                 Set(customer, "Password", new Password(reader["PasswordHash"].ToString()!));
 
             // Pessoa Física (B2C)
-            if (reader["TaxId"] != DBNull.Value)
+            if (reader.HasColumn("TaxId") && reader["TaxId"] != DBNull.Value)
             {
                 var individual = new Individual(
                     customer.Id,
@@ -64,7 +71,7 @@ namespace FSI.CloudShopping.Infrastructure.Mappings
                 Set(customer, "Individual", individual);
             }
             // Pessoa Jurídica (B2B)
-            else if (reader["BusinessTaxId"] != DBNull.Value)
+            else if (reader.HasColumn("BusinessTaxId") && reader["BusinessTaxId"] != DBNull.Value)
             {
                 var company = new Company(
                     customer.Id,
@@ -79,13 +86,23 @@ namespace FSI.CloudShopping.Infrastructure.Mappings
             return customer;
         }
 
-
         private static void Set(object target, string property, object? value)
         {
             target
                 .GetType()
                 .GetProperty(property)?
                 .SetValue(target, value);
+        }
+
+        // Método auxiliar para evitar erros caso a coluna não venha em alguma procedure específica
+        private static bool HasColumn(this SqlDataReader reader, string columnName)
+        {
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                if (reader.GetName(i).Equals(columnName, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
         }
     }
 }

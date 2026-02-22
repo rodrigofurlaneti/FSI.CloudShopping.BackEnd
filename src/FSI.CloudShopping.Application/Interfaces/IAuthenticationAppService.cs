@@ -4,5 +4,6 @@
     {
         Task<int> InsertAsync(string email, bool isAuthorized);
         Task<bool> GetAccessAsync(string email, string password);
+        Task ResetPasswordAsync(string email);
     }
 }

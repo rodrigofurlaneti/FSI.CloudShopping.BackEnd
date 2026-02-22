@@ -10,6 +10,7 @@ namespace FSI.CloudShopping.Domain.Entities
         public CustomerType CustomerType { get; private set; }
         public Guid SessionToken { get; private set; }
         public bool IsActive { get; private set; }
+        public bool IsTemporaryPassword { get; private set; }
         public GeoLocation? GeoLocation { get; private set; }
         public DeviceInfo? DeviceInfo { get; private set; }
         public virtual Individual? Individual { get; private set; }
@@ -121,6 +122,16 @@ namespace FSI.CloudShopping.Domain.Entities
                 throw new DomainException("Este contato já está vinculado a esta empresa.");
 
             _contacts.Add(contact);
+        }
+
+        // 🔹 Alterar Senha
+        public void ResetPassword(Password newPassword)
+        {
+            if (this.CustomerType == CustomerType.Guest)
+                throw new DomainException("Não é possível resetar a senha de um usuário Guest.");
+
+            this.Password = newPassword;
+            this.IsTemporaryPassword = true;
         }
 
         // 🔹 Ativação

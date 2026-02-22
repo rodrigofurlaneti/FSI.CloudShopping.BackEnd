@@ -38,8 +38,30 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
         public override async Task UpdateAsync(Customer entity)
         {
             using var cmd = await Connector.CreateProcedureCommandAsync(ProcUpdate);
+
+            // 1. Identificação Obrigatória
             cmd.Parameters.AddWithValue("@Id", entity.Id);
-            SetInsertParameters(cmd, entity); // Reutiliza para parâmetros básicos
+
+            // 2. Dados Básicos (Note que não enviamos SessionToken aqui para bater com sua Procedure)
+            cmd.Parameters.AddWithValue("@Email", entity.Email?.Address ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@PasswordHash", entity.Password?.Hash ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@CustomerTypeCode", entity.CustomerType.Code);
+            cmd.Parameters.AddWithValue("@IsActive", entity.IsActive);
+
+            // 3. Nova Flag de Segurança
+            cmd.Parameters.AddWithValue("@IsTemporaryPassword", entity.IsTemporaryPassword);
+
+            // 4. Geolocalização
+            cmd.Parameters.AddWithValue("@Latitude", entity.GeoLocation?.Latitude ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@Longitude", entity.GeoLocation?.Longitude ?? (object)DBNull.Value);
+
+            // 5. Device Info
+            cmd.Parameters.AddWithValue("@UserAgent", entity.DeviceInfo?.UserAgent ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@Platform", entity.DeviceInfo?.Platform ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@Language", entity.DeviceInfo?.Language ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@TimeZone", entity.DeviceInfo?.TimeZone ?? (object)DBNull.Value);
+
+            // 6. Dados de Extensão (B2C / B2B)
             AddIndividualParameters(cmd, entity.Individual);
             AddCompanyParameters(cmd, entity.Company);
 
@@ -50,7 +72,7 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
         {
             cmd.Parameters.AddWithValue("@Email", entity.Email?.Address ?? (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@PasswordHash", entity.Password?.Hash ?? (object)DBNull.Value);
-            cmd.Parameters.AddWithValue("@SessionToken", entity.SessionToken);
+            cmd.Parameters.AddWithValue("@SessionToken", entity.SessionToken); // No Insert o Token é necessário
             cmd.Parameters.AddWithValue("@CustomerTypeCode", entity.CustomerType.Code);
             cmd.Parameters.AddWithValue("@IsActive", entity.IsActive);
             cmd.Parameters.AddWithValue("@Latitude", entity.GeoLocation?.Latitude ?? (object)DBNull.Value);
@@ -59,6 +81,9 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
             cmd.Parameters.AddWithValue("@Platform", entity.DeviceInfo?.Platform ?? (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@Language", entity.DeviceInfo?.Language ?? (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@TimeZone", entity.DeviceInfo?.TimeZone ?? (object)DBNull.Value);
+
+            // Caso sua Procedure_Insert também ganhe a flag futuramente:
+            // cmd.Parameters.AddWithValue("@IsTemporaryPassword", entity.IsTemporaryPassword);
         }
 
         private void AddIndividualParameters(SqlCommand cmd, Individual? individual)
@@ -74,6 +99,8 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
             cmd.Parameters.AddWithValue("@CompanyName", company?.CompanyName ?? (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@StateTaxId", company?.StateTaxId ?? (object)DBNull.Value);
         }
+
+        // --- Métodos de Consulta ---
 
         public async Task<Customer?> GetByEmailAsync(Email email)
         {
@@ -98,6 +125,7 @@ namespace FSI.CloudShopping.Infrastructure.Repositories
             using var reader = await cmd.ExecuteReaderAsync();
             return await reader.ReadAsync() ? MapToEntity(reader) : null;
         }
+
         public async Task<int> GetIdBySessionTokenAsync(Guid token)
         {
             using var cmd = await Connector.CreateProcedureCommandAsync(ProcGetByToken);

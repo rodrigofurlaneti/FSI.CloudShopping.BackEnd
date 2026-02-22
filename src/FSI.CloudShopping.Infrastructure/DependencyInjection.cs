@@ -1,6 +1,7 @@
 ﻿using FSI.CloudShopping.Domain.Interfaces;
 using FSI.CloudShopping.Infrastructure.Data;
 using FSI.CloudShopping.Infrastructure.Repositories;
+using FSI.CloudShopping.Infrastructure.Services;
 using FSI.CloudShopping.Infrastructure.Security; 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,7 @@ namespace FSI.CloudShopping.Infrastructure
             services.AddScoped<ICartRepository, CartRepository>();
             services.AddScoped<IContactRepository, ContactRepository>();
             services.AddScoped<IPaymentRepository, PaymentRepository>();
+            services.AddScoped<IEmailService, EmailService>();
             return services;
         }
     }
