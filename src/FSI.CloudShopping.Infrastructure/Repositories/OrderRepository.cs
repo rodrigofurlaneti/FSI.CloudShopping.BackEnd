@@ -1,105 +1,123 @@
-﻿using FSI.CloudShopping.Domain.Entities;
+namespace FSI.CloudShopping.Infrastructure.Repositories;
+
+using Microsoft.EntityFrameworkCore;
+using FSI.CloudShopping.Domain.Entities;
 using FSI.CloudShopping.Domain.Interfaces;
-using FSI.CloudShopping.Domain.ValueObjects;
+using FSI.CloudShopping.Domain.Enums;
 using FSI.CloudShopping.Infrastructure.Data;
-using FSI.CloudShopping.Infrastructure.Mappings;
-using Microsoft.Data.SqlClient;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
-namespace FSI.CloudShopping.Infrastructure.Repositories
+public class OrderRepository : Repository<Order, int>, IOrderRepository
 {
-    public class OrderRepository : BaseRepository<Order>, IOrderRepository
+    public OrderRepository(AppDbContext context) : base(context)
     {
-        public OrderRepository(SqlDbConnector connector) : base(connector) { }
+    }
 
-        protected override string ProcInsert => "Procedure_Order_Insert";
-        protected override string ProcUpdate => "Procedure_Order_UpdateStatus";
-        protected override string ProcDelete => "Procedure_Order_Delete";
-        protected override string ProcGetById => "Procedure_Order_GetById";
-        protected override string ProcGetAll => "Procedure_Order_GetAll";
+    public async Task<Order?> GetByOrderNumberAsync(string orderNumber, CancellationToken cancellationToken = default)
+    {
+        return await DbSet
+            .Include(o => o.Items)
+            .Include(o => o.Customer)
+            .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber, cancellationToken);
+    }
 
-        public override async Task<int> AddAsync(Order entity)
+    public async Task<IEnumerable<Order>> GetByCustomerIdAsync(Guid customerId, CancellationToken cancellationToken = default)
+    {
+        return await DbSet
+            .Where(o => o.CustomerId == customerId)
+            .Include(o => o.Items)
+            .OrderByDescending(o => o.OrderDate)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IEnumerable<Order>> GetByStatusAsync(OrderStatus status, CancellationToken cancellationToken = default)
+    {
+        return await DbSet
+            .Where(o => o.Status == status)
+            .Include(o => o.Items)
+            .OrderByDescending(o => o.OrderDate)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IEnumerable<Order>> GetWithPaymentsAsync(int orderId, CancellationToken cancellationToken = default)
+    {
+        return await DbSet
+            .Where(o => o.Id == orderId)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<(IEnumerable<Order>, int)> GetPagedAsync(int pageNumber, int pageSize, OrderStatus? status = null, CancellationToken cancellationToken = default)
+    {
+        var query = DbSet.Include(o => o.Items).AsQueryable();
+
+        if (status.HasValue)
         {
-            using var cmd = await Connector.CreateProcedureCommandAsync(ProcInsert);
-            SetInsertParameters(cmd, entity);
-
-            var orderId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
-            entity.Id = orderId; 
-            foreach (var item in entity.Items)
-            {
-                using var cmdItem = await Connector.CreateProcedureCommandAsync("Procedure_OrderItem_Insert");
-                cmdItem.Parameters.AddWithValue("@OrderId", orderId);
-                cmdItem.Parameters.AddWithValue("@ProductId", item.ProductId);
-                cmdItem.Parameters.AddWithValue("@Quantity", item.Quantity.Value);
-                cmdItem.Parameters.AddWithValue("@UnitPrice", item.UnitPrice.Value);
-                await cmdItem.ExecuteNonQueryAsync();
-            }
-
-            return orderId;
+            query = query.Where(o => o.Status == status.Value);
         }
 
-        public override async Task UpdateAsync(Order entity)
-        {
-            using var cmd = await Connector.CreateProcedureCommandAsync(ProcUpdate);
-            cmd.Parameters.AddWithValue("@Id", entity.Id);
-            cmd.Parameters.AddWithValue("@Status", entity.Status.Code);
-            await cmd.ExecuteNonQueryAsync();
-        }
+        var totalCount = await query.CountAsync(cancellationToken);
 
-        public async Task<Order?> GetOrderWithItemsAsync(int orderId)
-        {
-            using var cmd = await Connector.CreateProcedureCommandAsync("Procedure_Order_GetWithItems");
-            cmd.Parameters.AddWithValue("@OrderId", orderId);
+        var orders = await query
+            .OrderByDescending(o => o.OrderDate)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
 
-            using var reader = await cmd.ExecuteReaderAsync();
-            if (!await reader.ReadAsync()) return null;
+        return (orders, totalCount);
+    }
 
-            var order = reader.ToOrderEntity();
-            if (await reader.NextResultAsync())
-            {
-                while (await reader.ReadAsync())
-                    order.AddItem(reader);
-            }
+    public async Task<(IEnumerable<Order> Orders, int TotalCount)> GetByCustomerIdPagedAsync(
+        Guid customerId, int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        var query = DbSet
+            .Where(o => o.CustomerId == customerId)
+            .Include(o => o.Items)
+            .OrderByDescending(o => o.OrderDate);
 
-            return order;
-        }
+        var totalCount = await query.CountAsync(cancellationToken);
 
-        public async Task<IEnumerable<Order>> GetOrdersByCustomerIdAsync(int customerId)
-        {
-            var orders = new List<Order>();
-            using var cmd = await Connector.CreateProcedureCommandAsync("Procedure_Order_GetByCustomerId");
-            cmd.Parameters.AddWithValue("@CustomerId", customerId);
+        var orders = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
 
-            using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-                orders.Add(MapToEntity(reader));
+        return (orders, totalCount);
+    }
 
-            return orders;
-        }
+    public async Task<(IEnumerable<Order> Orders, int TotalCount)> GetOrdersPagedAsync(
+        int page,
+        int pageSize,
+        OrderStatus? status = null,
+        DateTime? dateFrom = null,
+        DateTime? dateTo = null,
+        string? searchTerm = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = DbSet
+            .Include(o => o.Items)
+            .Include(o => o.Customer)
+            .AsQueryable();
 
-        public async Task<IEnumerable<Order>> GetOrdersByStatusAsync(OrderStatus status)
-        {
-            var orders = new List<Order>();
-            using var cmd = await Connector.CreateProcedureCommandAsync("Procedure_Order_GetByStatus");
-            cmd.Parameters.AddWithValue("@Status", status.Code);
+        if (status.HasValue)
+            query = query.Where(o => o.Status == status.Value);
 
-            using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-                orders.Add(MapToEntity(reader));
+        if (dateFrom.HasValue)
+            query = query.Where(o => o.OrderDate >= dateFrom.Value);
 
-            return orders;
-        }
+        if (dateTo.HasValue)
+            query = query.Where(o => o.OrderDate <= dateTo.Value);
 
-        // Padroniza parâmetros do insert
-        protected override void SetInsertParameters(SqlCommand cmd, Order entity)
-        {
-            cmd.Parameters.AddWithValue("@CustomerId", entity.CustomerId);
-            cmd.Parameters.AddWithValue("@ShippingAddressId", entity.ShippingAddressId);
-            cmd.Parameters.AddWithValue("@TotalAmount", entity.TotalAmount.Value);
-            cmd.Parameters.AddWithValue("@Status", entity.Status.Code);
-        }
+        if (!string.IsNullOrEmpty(searchTerm))
+            query = query.Where(o => o.OrderNumber.Contains(searchTerm)
+                || o.Customer!.Email.Value.Contains(searchTerm));
 
-        protected override Order MapToEntity(SqlDataReader reader) => reader.ToOrderEntity();
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var orders = await query
+            .OrderByDescending(o => o.OrderDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (orders, totalCount);
     }
 }

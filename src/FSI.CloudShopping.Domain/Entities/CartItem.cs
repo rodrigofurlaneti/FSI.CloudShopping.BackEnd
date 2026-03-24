@@ -1,36 +1,49 @@
-﻿using FSI.CloudShopping.Domain.Core;
+namespace FSI.CloudShopping.Domain.Entities;
+
+using FSI.CloudShopping.Domain.Core;
 using FSI.CloudShopping.Domain.ValueObjects;
 
-namespace FSI.CloudShopping.Domain.Entities
+/// <summary>
+/// Entity representing an item in a shopping cart.
+/// </summary>
+public class CartItem : Entity<Guid>
 {
-    public class CartItem : Entity
-    {
-        public int CartId { get; private set; }
-        public int ProductId { get; private set; }
-        public string Name { get; private set; }
-        public string ImageUrl { get; private set; }
-        public Quantity Quantity { get; private set; }
-        public Money UnitPrice { get; private set; }
-        protected CartItem() { }
-        public CartItem(int productId, Quantity quantity, Money unitPrice, string name = null, string imageUrl = null)
-        {
-            if (productId <= 0) throw new DomainException("Produto inválido.");
+    public int CartId { get; private set; }
+    public int ProductId { get; private set; }
+    public string ProductName { get; private set; }
+    public string ProductImageUrl { get; private set; }
+    public string ProductSku { get; private set; }
+    public int Quantity { get; private set; }
+    public Money UnitPrice { get; private set; }
 
-            ProductId = productId;
-            Quantity = quantity;
-            UnitPrice = unitPrice;
-            Name = name;
-            ImageUrl = imageUrl;
-        }
-        public void UpdateQuantity(Quantity newQuantity)
-        {
-            Quantity = newQuantity;
-        }
-        public void UpdateDisplayInfo(string name, string imageUrl)
-        {
-            Name = name;
-            ImageUrl = imageUrl;
-        }
-        public Money TotalPrice => new Money(UnitPrice.Value * Quantity.Value);
+    public Money Subtotal => UnitPrice * Quantity;
+
+    // Navigation
+    public Cart? Cart { get; private set; }
+
+    public CartItem(Guid id, int cartId, int productId, string productName, string productImageUrl,
+        string productSku, Quantity quantity, Money unitPrice) : base(id)
+    {
+        CartId = cartId;
+        ProductId = productId;
+        ProductName = productName;
+        ProductImageUrl = productImageUrl;
+        ProductSku = productSku;
+        Quantity = quantity.Value;
+        UnitPrice = unitPrice;
+    }
+
+    protected CartItem() { }
+
+    public void UpdateQuantity(Quantity quantity)
+    {
+        Quantity = quantity.Value;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateUnitPrice(Money price)
+    {
+        UnitPrice = price;
+        UpdatedAt = DateTime.UtcNow;
     }
 }

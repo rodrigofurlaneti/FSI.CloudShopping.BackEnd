@@ -1,59 +1,60 @@
-﻿using FSI.CloudShopping.Domain.Core;
-using System.Linq;
+namespace FSI.CloudShopping.Domain.ValueObjects;
 
-namespace FSI.CloudShopping.Domain.ValueObjects
+using FSI.CloudShopping.Domain.Core;
+
+/// <summary>
+/// Value object representing a Brazilian CPF (Cadastro de Pessoas Físicas) - 11 digits.
+/// </summary>
+public class TaxId : ValueObject
 {
-    public record TaxId
+    public string Value { get; }
+
+    public TaxId(string value)
     {
-        public string Number { get; }
+        if (string.IsNullOrWhiteSpace(value))
+            throw new ArgumentException("CPF cannot be empty.", nameof(value));
 
-        public TaxId(string number)
-        {
-            if (string.IsNullOrWhiteSpace(number))
-                throw new DomainException("O CPF não pode ser vazio.");
+        var cleaned = value.Replace(".", "").Replace("-", "");
 
-            // Remove máscara (pontos, traços, espaços)
-            var cleanedNumber = new string(number.Where(char.IsDigit).ToArray());
+        if (cleaned.Length != 11 || !cleaned.All(char.IsDigit))
+            throw new ArgumentException("CPF must contain exactly 11 digits.", nameof(value));
 
-            if (!Validate(cleanedNumber))
-                throw new DomainException("Número de CPF inválido.");
+        if (!IsValidCpf(cleaned))
+            throw new ArgumentException("Invalid CPF.", nameof(value));
 
-            Number = cleanedNumber;
-        }
-
-        private static bool Validate(string cpf)
-        {
-            if (cpf.Length != 11) return false;
-
-            if (cpf.Distinct().Count() == 1) return false;
-
-            int[] multiplicador1 = new int[9] { 10, 9, 8, 7, 6, 5, 4, 3, 2 };
-            int[] multiplicador2 = new int[10] { 11, 10, 9, 8, 7, 6, 5, 4, 3, 2 };
-
-            string tempCpf = cpf.Substring(0, 9);
-            int soma = 0;
-
-            for (int i = 0; i < 9; i++)
-                soma += int.Parse(tempCpf[i].ToString()) * multiplicador1[i];
-
-            int resto = soma % 11;
-            resto = resto < 2 ? 0 : 11 - resto;
-
-            string digito = resto.ToString();
-            tempCpf = tempCpf + digito;
-            soma = 0;
-
-            for (int i = 0; i < 10; i++)
-                soma += int.Parse(tempCpf[i].ToString()) * multiplicador2[i];
-
-            resto = soma % 11;
-            resto = resto < 2 ? 0 : 11 - resto;
-
-            digito = digito + resto.ToString();
-
-            return cpf.EndsWith(digito);
-        }
-
-        public override string ToString() => Number;
+        Value = cleaned;
     }
+
+    private static bool IsValidCpf(string cpf)
+    {
+        if (cpf == new string(cpf[0], 11))
+            return false;
+
+        var sum = 0;
+        for (var i = 0; i < 9; i++)
+        {
+            sum += int.Parse(cpf[i].ToString()) * (10 - i);
+        }
+
+        var remainder = sum % 11;
+        var digit1 = remainder < 2 ? 0 : 11 - remainder;
+
+        sum = 0;
+        for (var i = 0; i < 10; i++)
+        {
+            sum += int.Parse(cpf[i].ToString()) * (11 - i);
+        }
+
+        remainder = sum % 11;
+        var digit2 = remainder < 2 ? 0 : 11 - remainder;
+
+        return cpf[9] == (char)('0' + digit1) && cpf[10] == (char)('0' + digit2);
+    }
+
+    protected override IEnumerable<object?> GetEqualityComponents()
+    {
+        yield return Value;
+    }
+
+    public override string ToString() => Value;
 }

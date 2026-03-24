@@ -1,50 +1,67 @@
-﻿using FSI.CloudShopping.Domain.Core;
-using FSI.CloudShopping.Domain.ValidationAssistant;
-namespace FSI.CloudShopping.Domain.ValueObjects
+namespace FSI.CloudShopping.Domain.ValueObjects;
+
+using FSI.CloudShopping.Domain.Core;
+
+/// <summary>
+/// Value object representing a Brazilian CNPJ (Cadastro Nacional da Pessoa Jurídica) - 14 digits.
+/// </summary>
+public class BusinessTaxId : ValueObject
 {
-    public record BusinessTaxId
+    public string Value { get; }
+
+    public BusinessTaxId(string value)
     {
-        public string Number { get; }
+        if (string.IsNullOrWhiteSpace(value))
+            throw new ArgumentException("CNPJ cannot be empty.", nameof(value));
 
-        public BusinessTaxId(string number)
-        {
-            if (string.IsNullOrWhiteSpace(number))
-                throw new DomainException("O CNPJ não pode ser vazio.");
+        var cleaned = value.Replace(".", "").Replace("-", "").Replace("/", "");
 
-            var cleanedNumber = new string(number.Where(char.IsDigit).ToArray());
+        if (cleaned.Length != 14 || !cleaned.All(char.IsDigit))
+            throw new ArgumentException("CNPJ must contain exactly 14 digits.", nameof(value));
 
-            if (cleanedNumber.Length != 14 || cleanedNumber.Distinct().Count() == 1 || !Validate(cleanedNumber))
-                throw new DomainException("Número de CNPJ inválido.");
+        if (!IsValidCnpj(cleaned))
+            throw new ArgumentException("Invalid CNPJ.", nameof(value));
 
-            Number = cleanedNumber;
-        }
-
-        private static bool Validate(string cnpj)
-        {
-            int[] m1 = { 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2 };
-            int[] m2 = { 6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2 };
-
-            string tempCnpj = cnpj.Substring(0, 12);
-            int soma = 0;
-
-            for (int i = 0; i < 12; i++)
-                soma += int.Parse(tempCnpj[i].ToString()) * m1[i];
-
-            int resto = soma % 11;
-            resto = resto < 2 ? 0 : 11 - resto;
-
-            string digito = resto.ToString();
-            tempCnpj = tempCnpj + digito;
-            soma = 0;
-
-            for (int i = 0; i < 13; i++)
-                soma += int.Parse(tempCnpj[i].ToString()) * m2[i];
-
-            resto = soma % 11;
-            resto = resto < 2 ? 0 : 11 - resto;
-
-            digito = digito + resto.ToString();
-            return cnpj.EndsWith(digito);
-        }
+        Value = cleaned;
     }
+
+    private static bool IsValidCnpj(string cnpj)
+    {
+        if (cnpj == new string(cnpj[0], 14))
+            return false;
+
+        var length = cnpj.Length - 2;
+        var numbers = cnpj.Substring(0, length);
+        var digits = cnpj.Substring(length);
+
+        var sum = 0;
+        var position = 0;
+        for (var i = length - 1; i >= 0; i--)
+        {
+            sum += int.Parse(numbers[position].ToString()) * (i % 8 + 2);
+            position++;
+        }
+
+        var result = sum % 11 < 2 ? 0 : 11 - sum % 11;
+        if (result != int.Parse(digits[0].ToString()))
+            return false;
+
+        sum = 0;
+        position = 0;
+        for (var i = length + 1 - 1; i >= 0; i--)
+        {
+            sum += int.Parse(cnpj[position].ToString()) * (i % 8 + 2);
+            position++;
+        }
+
+        result = sum % 11 < 2 ? 0 : 11 - sum % 11;
+        return result == int.Parse(digits[1].ToString());
+    }
+
+    protected override IEnumerable<object?> GetEqualityComponents()
+    {
+        yield return Value;
+    }
+
+    public override string ToString() => Value;
 }

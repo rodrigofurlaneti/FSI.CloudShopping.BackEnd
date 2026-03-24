@@ -1,19 +1,69 @@
-﻿namespace FSI.CloudShopping.Domain.Core
+namespace FSI.CloudShopping.Domain.Core;
+
+/// <summary>
+/// Base entity class for all domain entities. Provides common identity and audit properties.
+/// </summary>
+public abstract class Entity<TId> where TId : notnull
 {
-    public abstract class Entity
+    public TId Id { get; protected set; }
+    public DateTime CreatedAt { get; protected set; }
+    public DateTime UpdatedAt { get; protected set; }
+
+    private readonly List<IDomainEvent> _domainEvents = [];
+
+    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+
+    protected Entity(TId id)
     {
-        public int Id { get; set; }
-        public DateTime CreatedAt { get; private set; } = DateTime.Now;
-        public DateTime UpdatedAt { get; protected set; } = DateTime.Now;
-        internal void SetId(int id) => Id = id;
-        public override bool Equals(object? obj)
-        {
-            var compareTo = obj as Entity;
-            if (ReferenceEquals(this, compareTo)) return true;
-            if (compareTo is null) return false;
-            return Id.Equals(compareTo.Id);
-        }
-        public override int GetHashCode() => (GetType().GetHashCode() * 907) ^ Id.GetHashCode();
-        public void Touch() => UpdatedAt = DateTime.Now;
+        Id = id;
+        CreatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    protected Entity() { }
+
+    public void AddDomainEvent(IDomainEvent domainEvent)
+    {
+        _domainEvents.Add(domainEvent);
+    }
+
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
+    }
+
+    public override bool Equals(object? obj)
+    {
+        if (obj is not Entity<TId> other)
+            return false;
+
+        if (ReferenceEquals(this, other))
+            return true;
+
+        if (Id.Equals(default) || other.Id.Equals(default))
+            return false;
+
+        return Id.Equals(other.Id);
+    }
+
+    public override int GetHashCode()
+    {
+        return Id.GetHashCode();
+    }
+
+    public static bool operator ==(Entity<TId>? left, Entity<TId>? right)
+    {
+        if (left is null && right is null)
+            return true;
+
+        if (left is null || right is null)
+            return false;
+
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(Entity<TId>? left, Entity<TId>? right)
+    {
+        return !(left == right);
     }
 }

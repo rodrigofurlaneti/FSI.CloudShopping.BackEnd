@@ -1,9 +1,11 @@
-﻿using FSI.CloudShopping.Domain.Entities;
-namespace FSI.CloudShopping.Domain.Interfaces
+namespace FSI.CloudShopping.Domain.Interfaces;
+
+using FSI.CloudShopping.Domain.Entities;
+using FSI.CloudShopping.Domain.Enums;
+
+public interface IPaymentRepository : IRepository<Payment, int>
 {
-    public interface IPaymentRepository : IRepository<Payment>
-    {
-        Task<Payment?> GetByOrderIdAsync(int orderId);
-        Task<IEnumerable<Payment>> GetHistoryByOrderIdAsync(int orderId);
-    }
+    Task<Payment?> GetByOrderIdAsync(int orderId, CancellationToken cancellationToken = default);
+    Task<Payment?> GetByTransactionIdAsync(string transactionId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Payment>> GetByStatusAsync(PaymentStatus status, CancellationToken cancellationToken = default);
 }

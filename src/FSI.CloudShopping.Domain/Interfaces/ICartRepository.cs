@@ -1,13 +1,10 @@
-﻿using FSI.CloudShopping.Domain.Entities;
-using FSI.CloudShopping.Domain.ValueObjects;
-namespace FSI.CloudShopping.Domain.Interfaces
+namespace FSI.CloudShopping.Domain.Interfaces;
+
+using FSI.CloudShopping.Domain.Entities;
+
+public interface ICartRepository : IRepository<Cart, int>
 {
-    public interface ICartRepository : IRepository<Cart>
-    {
-        Task<Cart?> GetByCustomerIdAsync(int customerId);
-        Task<Cart?> GetBySessionTokenAsync(Guid token);
-        Task<Cart?> GetByEmailAsync(Email email);
-        Task UpdateItemsAsync(Cart cart);
-        //Task AddItemAsync(int cartId, CartItem item);
-    }
+    Task<Cart?> GetByCustomerIdAsync(Guid customerId, CancellationToken cancellationToken = default);
+    Task<Cart?> GetBySessionTokenAsync(Guid sessionToken, CancellationToken cancellationToken = default);
+    Task DeleteExpiredAsync(CancellationToken cancellationToken = default);
 }

@@ -1,25 +1,36 @@
-﻿using System.Text.RegularExpressions;
+namespace FSI.CloudShopping.Domain.ValueObjects;
+
+using System.Text.RegularExpressions;
 using FSI.CloudShopping.Domain.Core;
 
-namespace FSI.CloudShopping.Domain.ValueObjects
+/// <summary>
+/// Value object representing an email address with validation.
+/// </summary>
+public class Email : ValueObject
 {
-    public record Email
+    public string Value { get; }
+
+    public Email(string value)
     {
-        public string Address { get; }
+        if (string.IsNullOrWhiteSpace(value))
+            throw new ArgumentException("Email cannot be empty.", nameof(value));
 
-        private static readonly Regex EmailRegex = new Regex(
-            @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
-            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        if (!IsValidEmail(value))
+            throw new ArgumentException("Email format is invalid.", nameof(value));
 
-        public Email(string address)
-        {
-            if (string.IsNullOrWhiteSpace(address) || !EmailRegex.IsMatch(address))
-                throw new DomainException("Invalid email address format.");
-
-            Address = address.ToLower().Trim();
-        }
-
-        public static implicit operator string(Email email) => email.Address;
-        public override string ToString() => Address;
+        Value = value.ToLowerInvariant();
     }
+
+    private static bool IsValidEmail(string email)
+    {
+        const string pattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
+        return Regex.IsMatch(email, pattern);
+    }
+
+    protected override IEnumerable<object?> GetEqualityComponents()
+    {
+        yield return Value;
+    }
+
+    public override string ToString() => Value;
 }

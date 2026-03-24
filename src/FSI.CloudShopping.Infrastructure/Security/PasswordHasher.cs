@@ -1,21 +1,22 @@
-﻿using BCrypt.Net;
-using FSI.CloudShopping.Domain.Interfaces;
+namespace FSI.CloudShopping.Infrastructure.Security;
 
-namespace FSI.CloudShopping.Infrastructure.Security
+using BCrypt.Net;
+
+public class PasswordHasher
 {
-    public class PasswordHasher : IPasswordHasher
+    public static string HashPassword(string password)
     {
-        private const int WorkFactor = 12;
-        public string HashPassword(string password)
-        {
-            if (string.IsNullOrWhiteSpace(password))
-                throw new ArgumentException("A senha não pode ser vazia.");
+        var salt = BCrypt.GenerateSalt(12);
+        return BCrypt.HashPassword(password, salt);
+    }
 
-            return BCrypt.Net.BCrypt.HashPassword(password, WorkFactor);
-        }
-        public bool VerifyPassword(string password, string hash)
-        {
-            return BCrypt.Net.BCrypt.Verify(password, hash);
-        }
+    public static bool VerifyPassword(string password, string hash)
+    {
+        return BCrypt.Verify(password, hash);
+    }
+
+    public static string GenerateSalt()
+    {
+        return BCrypt.GenerateSalt(12);
     }
 }

@@ -1,30 +1,41 @@
-﻿namespace FSI.CloudShopping.Domain.Core
+namespace FSI.CloudShopping.Domain.Core;
+
+/// <summary>
+/// Base class for value objects. Value objects are immutable and compared by their attributes.
+/// </summary>
+public abstract class ValueObject
 {
-    public abstract class ValueObject
+    protected abstract IEnumerable<object?> GetEqualityComponents();
+
+    public override bool Equals(object? obj)
     {
-        protected abstract IEnumerable<object> GetEqualityComponents();
+        if (obj is null || obj.GetType() != GetType())
+            return false;
 
-        public override bool Equals(object? obj)
-        {
-            if (obj is null || obj.GetType() != GetType())
-                return false;
+        var other = (ValueObject)obj;
+        return GetEqualityComponents().SequenceEqual(other.GetEqualityComponents());
+    }
 
-            var other = (ValueObject)obj;
+    public override int GetHashCode()
+    {
+        return GetEqualityComponents()
+            .Select(x => x?.GetHashCode() ?? 0)
+            .Aggregate((x, y) => x ^ y);
+    }
 
-            return GetEqualityComponents()
-                .SequenceEqual(other.GetEqualityComponents());
-        }
+    public static bool operator ==(ValueObject? left, ValueObject? right)
+    {
+        if (left is null && right is null)
+            return true;
 
-        public override int GetHashCode()
-        {
-            return GetEqualityComponents()
-                .Aggregate(1, (current, obj) =>
-                {
-                    unchecked
-                    {
-                        return current * 23 + (obj?.GetHashCode() ?? 0);
-                    }
-                });
-        }
+        if (left is null || right is null)
+            return false;
+
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(ValueObject? left, ValueObject? right)
+    {
+        return !(left == right);
     }
 }

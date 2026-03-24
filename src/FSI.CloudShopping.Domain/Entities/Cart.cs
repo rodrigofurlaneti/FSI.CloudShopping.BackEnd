@@ -1,52 +1,100 @@
-﻿using FSI.CloudShopping.Domain.Core;
+namespace FSI.CloudShopping.Domain.Entities;
+
+using FSI.CloudShopping.Domain.Core;
 using FSI.CloudShopping.Domain.ValueObjects;
 
-namespace FSI.CloudShopping.Domain.Entities
+/// <summary>
+/// Aggregate root for Cart. Represents a shopping cart for a customer session.
+/// </summary>
+public class Cart : AggregateRoot<int>
 {
-    public class Cart : Entity
+    public Guid CustomerId { get; private set; }
+    public DateTime ExpiresAt { get; private set; }
+
+    private readonly List<CartItem> _items = [];
+    public IReadOnlyCollection<CartItem> Items => _items.AsReadOnly();
+
+    public Cart(int id, Guid customerId) : base(id)
     {
-        public int CustomerId { get; private set; }
-        public DateTime UpdatedAt { get; private set; }
-        private readonly List<CartItem> _items = new();
-        public IReadOnlyCollection<CartItem> Items => _items;
-        protected Cart() { }
-        public Cart(int customerId)
+        CustomerId = customerId;
+        ExpiresAt = DateTime.UtcNow.AddDays(30);
+    }
+
+    protected Cart() { }
+
+    public static Cart Create(Guid customerId)
+    {
+        return new Cart(0, customerId);
+    }
+
+    public void AddOrUpdateItem(int productId, string productName, string productImageUrl, string productSku,
+        Quantity quantity, Money unitPrice)
+    {
+        var existingItem = _items.FirstOrDefault(i => i.ProductId == productId);
+
+        if (existingItem != null)
         {
-            if (customerId <= 0)
-                throw new DomainException("O carrinho deve pertencer a um cliente válido.");
-            CustomerId = customerId;
-            Touch();
+            existingItem.UpdateQuantity(quantity);
         }
-        public void AddOrUpdateItem(int productId, Quantity quantity, Money price, string name = null, string imageUrl = null)
+        else
         {
-            var item = _items.FirstOrDefault(x => x.ProductId == productId);
-            if (item is null)
-            {
-                _items.Add(new CartItem(productId, quantity, price, name, imageUrl));
-            }
-            else
-            {
-                item.UpdateQuantity(new Quantity(item.Quantity.Value + quantity.Value));
-                if (!string.IsNullOrEmpty(name))
-                    item.UpdateDisplayInfo(name, imageUrl);
-            }
-            Touch();
+            var item = new CartItem(Guid.NewGuid(), Id, productId, productName, productImageUrl, productSku, quantity, unitPrice);
+            _items.Add(item);
         }
-        public void RemoveItem(int productId)
+
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void RemoveItem(int productId)
+    {
+        var item = _items.FirstOrDefault(i => i.ProductId == productId);
+        if (item != null)
         {
-            var item = _items.FirstOrDefault(x => x.ProductId == productId);
-            if (item != null)
-            {
-                _items.Remove(item);
-                Touch();
-            }
+            _items.Remove(item);
+            UpdatedAt = DateTime.UtcNow;
         }
-        public bool IsExpired() => UpdatedAt < DateTime.Now.AddDays(-30);
-        private void Touch() => UpdatedAt = DateTime.Now;
-        public Money GetTotal()
+    }
+
+    public void Clear()
+    {
+        _items.Clear();
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Merge(Cart otherCart)
+    {
+        if (otherCart.Id == Id)
+            throw new DomainException("Cannot merge cart with itself.");
+
+        foreach (var item in otherCart.Items)
         {
-            decimal total = _items.Sum(x => x.Quantity.Value * x.UnitPrice.Value);
-            return new Money(total);
+            AddOrUpdateItem(item.ProductId, item.ProductName, item.ProductImageUrl, item.ProductSku,
+                new Quantity(item.Quantity), item.UnitPrice);
         }
+
+        RaiseDomainEvent(new CartMergedEvent(Id, CustomerId, otherCart.CustomerId, _items.Count));
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public bool IsExpired => DateTime.UtcNow > ExpiresAt;
+
+    public Money GetTotal()
+    {
+        if (_items.Count == 0)
+            return new Money(0);
+
+        var total = _items.Aggregate(
+            new Money(0),
+            (acc, item) => acc + item.Subtotal);
+
+        return total;
+    }
+
+    public int GetItemCount() => _items.Sum(i => i.Quantity);
+
+    public void ExtendExpiration(int daysFromNow = 30)
+    {
+        ExpiresAt = DateTime.UtcNow.AddDays(daysFromNow);
+        UpdatedAt = DateTime.UtcNow;
     }
 }

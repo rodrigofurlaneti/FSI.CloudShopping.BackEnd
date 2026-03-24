@@ -1,106 +1,100 @@
-﻿using FSI.CloudShopping.Domain.Entities;
+namespace FSI.CloudShopping.Infrastructure.Repositories;
+
+using Microsoft.EntityFrameworkCore;
+using FSI.CloudShopping.Domain.Entities;
 using FSI.CloudShopping.Domain.Interfaces;
+using FSI.CloudShopping.Domain.Enums;
 using FSI.CloudShopping.Domain.ValueObjects;
 using FSI.CloudShopping.Infrastructure.Data;
-using FSI.CloudShopping.Infrastructure.Mappings;
-using Microsoft.Data.SqlClient;
-using System.Data;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
-namespace FSI.CloudShopping.Infrastructure.Repositories
+public class ProductRepository : Repository<Product, int>, IProductRepository
 {
-    public class ProductRepository : BaseRepository<Product>, IProductRepository
+    public ProductRepository(AppDbContext context) : base(context)
     {
-        public ProductRepository(SqlDbConnector connector) : base(connector) { }
+    }
 
-        protected override string ProcInsert => "Procedure_Product_Insert";
-        protected override string ProcUpdate => "Procedure_Product_Update";
-        protected override string ProcDelete => "Procedure_Product_Delete";
-        protected override string ProcGetById => "Procedure_Product_GetById";
-        protected override string ProcGetAll => "Procedure_Product_Get";
-        protected string ProcGetBySku => "Procedure_Product_GetBySku";
-        protected string ProcGetByCategoryId => "Procedure_Product_GetByCategoryId";
-        protected string ProcGetByAvailable => "Procedure_Product_GetAvailable";
-        protected string ProcGetLowStock => "Procedure_Product_GetLowStock";
+    public async Task<Product?> GetBySkuAsync(SKU sku, CancellationToken cancellationToken = default)
+    {
+        return await DbSet
+            .Include(p => p.Images)
+            .FirstOrDefaultAsync(p => p.Sku == sku, cancellationToken);
+    }
 
-        public override async Task<int> AddAsync(Product entity)
+    public async Task<Product?> GetBySlugAsync(Slug slug, CancellationToken cancellationToken = default)
+    {
+        return await DbSet
+            .Include(p => p.Images)
+            .FirstOrDefaultAsync(p => p.Slug == slug, cancellationToken);
+    }
+
+    public async Task<IEnumerable<Product>> GetByCategoryAsync(Guid categoryId, CancellationToken cancellationToken = default)
+    {
+        return await DbSet
+            .Where(p => p.CategoryId == categoryId && p.IsActive)
+            .Include(p => p.Images)
+            .OrderBy(p => p.Name)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IEnumerable<Product>> GetFeaturedAsync(int limit = 10, CancellationToken cancellationToken = default)
+    {
+        return await DbSet
+            .Where(p => p.IsFeatured && p.IsActive)
+            .Include(p => p.Images)
+            .OrderBy(p => p.Name)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IEnumerable<Product>> SearchAsync(string searchTerm, int skip = 0, int take = 10, CancellationToken cancellationToken = default)
+    {
+        return await DbSet
+            .Where(p => p.IsActive && (p.Name.Contains(searchTerm) || p.Description.Contains(searchTerm)))
+            .Include(p => p.Images)
+            .OrderBy(p => p.Name)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<(IEnumerable<Product>, int)> GetPagedAsync(
+        int pageNumber,
+        int pageSize,
+        string? search = null,
+        Guid? categoryId = null,
+        string? status = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = DbSet
+            .Include(p => p.Images)
+            .AsQueryable();
+
+        // Apply status filter (defaults to active-only when no status specified)
+        if (!string.IsNullOrEmpty(status) && Enum.TryParse<ProductStatus>(status, ignoreCase: true, out var parsedStatus))
+            query = query.Where(p => p.Status == parsedStatus);
+        else if (string.IsNullOrEmpty(status))
+            query = query.Where(p => p.IsActive);
+
+        // Apply search filter
+        if (!string.IsNullOrEmpty(search))
         {
-            using var cmd = await Connector.CreateProcedureCommandAsync(ProcInsert);
-            SetCommonParameters(cmd, entity);
-
-            var result = await cmd.ExecuteScalarAsync();
-            int generatedId = Convert.ToInt32(result);
-            entity.Id = generatedId; 
-            return generatedId;
+            var lowerSearch = search.ToLower();
+            query = query.Where(p => p.Name.ToLower().Contains(lowerSearch)
+                || p.Description.ToLower().Contains(lowerSearch));
         }
 
-        public override async Task UpdateAsync(Product entity)
-        {
-            using var cmd = await Connector.CreateProcedureCommandAsync(ProcUpdate);
-            cmd.Parameters.AddWithValue("@Id", entity.Id);
-            SetCommonParameters(cmd, entity);
-            await cmd.ExecuteNonQueryAsync();
-        }
+        // Apply category filter
+        if (categoryId.HasValue)
+            query = query.Where(p => p.CategoryId == categoryId.Value);
 
-        public async Task<Product?> GetBySkuAsync(SKU sku)
-        {
-            using var cmd = await Connector.CreateProcedureCommandAsync(ProcGetBySku);
-            cmd.Parameters.AddWithValue("@Sku", sku.Code);
+        query = query.OrderBy(p => p.Name);
 
-            using var reader = await cmd.ExecuteReaderAsync();
-            return await reader.ReadAsync() ? MapToEntity(reader) : null;
-        }
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
 
-        public async Task<IEnumerable<Product>> GetByCategoryIdAsync(int categoryId)
-        {
-            var products = new List<Product>();
-            using var cmd = await Connector.CreateProcedureCommandAsync(ProcGetByCategoryId);
-            cmd.Parameters.AddWithValue("@CategoryId", categoryId);
-
-            using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-                products.Add(MapToEntity(reader));
-
-            return products;
-        }
-
-        public async Task<IEnumerable<Product>> GetAvailableProductsAsync()
-        {
-            var products = new List<Product>();
-            using var cmd = await Connector.CreateProcedureCommandAsync(ProcGetByAvailable);
-
-            using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-                products.Add(MapToEntity(reader));
-
-            return products;
-        }
-
-        public async Task<IEnumerable<Product>> GetLowStockProductsAsync(int threshold)
-        {
-            var products = new List<Product>();
-            using var cmd = await Connector.CreateProcedureCommandAsync(ProcGetLowStock);
-            cmd.Parameters.AddWithValue("@Threshold", threshold);
-
-            using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-                products.Add(MapToEntity(reader));
-
-            return products;
-        }
-
-        protected override void SetInsertParameters(SqlCommand cmd, Product entity) => SetCommonParameters(cmd, entity);
-
-        private void SetCommonParameters(SqlCommand cmd, Product entity)
-        {
-            cmd.Parameters.AddWithValue("@Sku", entity.Sku.Code);
-            cmd.Parameters.AddWithValue("@Name", entity.Name);
-            cmd.Parameters.AddWithValue("@Description", entity.Description);
-            cmd.Parameters.AddWithValue("@Price", entity.Price.Value);
-            cmd.Parameters.AddWithValue("@Stock", entity.Stock.Value);
-        }
-
-        protected override Product MapToEntity(SqlDataReader reader) => reader.ToProductEntity();
+        return (items, totalCount);
     }
 }

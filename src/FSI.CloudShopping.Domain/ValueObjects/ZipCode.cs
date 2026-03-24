@@ -1,19 +1,31 @@
-﻿using FSI.CloudShopping.Domain.Core;
-namespace FSI.CloudShopping.Domain.ValueObjects
+namespace FSI.CloudShopping.Domain.ValueObjects;
+
+using FSI.CloudShopping.Domain.Core;
+
+/// <summary>
+/// Value object representing a Brazilian postal code (CEP) - 8 digits.
+/// </summary>
+public class ZipCode : ValueObject
 {
-    public record ZipCode
+    public string Value { get; }
+
+    public ZipCode(string value)
     {
-        public string Value { get; }
-        public ZipCode(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                throw new DomainException("ZipCode cannot be empty.");
-            var cleanValue = new string(value.Where(char.IsDigit).ToArray());
-            if (cleanValue.Length != 8)
-                throw new DomainException("ZipCode must have 8 digits.");
-            Value = cleanValue;
-        }
-        public string Formatted() => $"{Value.Substring(0, 5)}-{Value.Substring(5)}";
-        public override string ToString() => Value;
+        if (string.IsNullOrWhiteSpace(value))
+            throw new ArgumentException("ZipCode cannot be empty.", nameof(value));
+
+        var cleaned = value.Replace("-", "").Replace(".", "");
+
+        if (cleaned.Length != 8 || !cleaned.All(char.IsDigit))
+            throw new ArgumentException("ZipCode must contain exactly 8 digits.", nameof(value));
+
+        Value = cleaned;
     }
+
+    protected override IEnumerable<object?> GetEqualityComponents()
+    {
+        yield return Value;
+    }
+
+    public override string ToString() => $"{Value.Substring(0, 5)}-{Value.Substring(5)}";
 }

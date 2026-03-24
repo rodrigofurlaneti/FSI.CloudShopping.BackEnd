@@ -1,27 +1,38 @@
-﻿using FSI.CloudShopping.Domain.Core;
-using FSI.CloudShopping.Domain.ValueObjects;
-namespace FSI.CloudShopping.Domain.Entities
-{
-    public class Company : Entity
-    {
-        public BusinessTaxId BusinessTaxId { get; private set; }
-        public string CompanyName { get; private set; }
-        public string? StateTaxId { get; private set; }
-        public virtual Customer Customer { get; private set; }
-        protected Company() { }
-        public Company(int customerId, BusinessTaxId businessTaxId, string companyName, string? stateTaxId)
-        {
-            Id = customerId;
-            BusinessTaxId = businessTaxId;
-            CompanyName = companyName;
-            StateTaxId = stateTaxId;
-        }
-        public void UpdateCompanyName(string newName)
-        {
-            if (string.IsNullOrWhiteSpace(newName))
-                throw new DomainException("O nome da empresa não pode ser vazio.");
+namespace FSI.CloudShopping.Domain.Entities;
 
-            CompanyName = newName;
-        }
+using FSI.CloudShopping.Domain.Core;
+using FSI.CloudShopping.Domain.ValueObjects;
+
+/// <summary>
+/// Entity representing a B2B (company) customer.
+/// </summary>
+public class Company : Entity<Guid>
+{
+    public Guid CustomerId { get; private set; }
+    public BusinessTaxId BusinessTaxId { get; private set; }
+    public string CompanyName { get; private set; }
+    public string? StateTaxId { get; private set; }
+    public string? TradeName { get; private set; }
+
+    // Navigation
+    public Customer? Customer { get; private set; }
+
+    public Company(Guid id, Guid customerId, BusinessTaxId businessTaxId, string companyName, string? stateTaxId = null, string? tradeName = null) : base(id)
+    {
+        CustomerId = customerId;
+        BusinessTaxId = businessTaxId;
+        CompanyName = companyName;
+        StateTaxId = stateTaxId;
+        TradeName = tradeName;
+    }
+
+    protected Company() { }
+
+    public void UpdateProfile(string companyName, string? stateTaxId = null, string? tradeName = null)
+    {
+        CompanyName = companyName;
+        StateTaxId = stateTaxId;
+        TradeName = tradeName;
+        UpdatedAt = DateTime.UtcNow;
     }
 }

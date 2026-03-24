@@ -1,7 +1,16 @@
-﻿namespace FSI.CloudShopping.Domain.Core
+namespace FSI.CloudShopping.Domain.Core;
+
+/// <summary>
+/// Represents an exception that occurs when a domain business rule is violated.
+/// </summary>
+public class DomainException : Exception
 {
-    public class DomainException : Exception
+    public DomainException(string message) : base(message)
     {
-        public DomainException(string message) : base(message) { }
+    }
+
+    public DomainException(string message, Exception innerException)
+        : base(message, innerException)
+    {
     }
 }

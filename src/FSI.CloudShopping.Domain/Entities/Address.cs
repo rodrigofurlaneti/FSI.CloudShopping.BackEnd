@@ -1,100 +1,68 @@
-﻿using FSI.CloudShopping.Domain.Core;
+namespace FSI.CloudShopping.Domain.Entities;
+
+using FSI.CloudShopping.Domain.Core;
+using FSI.CloudShopping.Domain.Enums;
 using FSI.CloudShopping.Domain.ValueObjects;
 
-namespace FSI.CloudShopping.Domain.Entities
+/// <summary>
+/// Entity representing a customer address.
+/// </summary>
+public class Address : Entity<Guid>
 {
-    public class Address : Entity
+    public Guid CustomerId { get; private set; }
+    public AddressType AddressType { get; private set; }
+    public string Street { get; private set; }
+    public string Number { get; private set; }
+    public string? Complement { get; private set; }
+    public string Neighborhood { get; private set; }
+    public string City { get; private set; }
+    public string State { get; private set; }
+    public ZipCode ZipCode { get; private set; }
+    public string Country { get; private set; }
+    public bool IsDefault { get; private set; }
+
+    // Navigation
+    public Customer? Customer { get; private set; }
+
+    public Address(Guid id, Guid customerId, AddressType addressType, string street, string number,
+        string neighborhood, string city, string state, ZipCode zipCode, string country = "BR", bool isDefault = false)
+        : base(id)
     {
-        public int CustomerId { get; private set; }
-        public AddressType AddressType { get; private set; }
-        public string Street { get; private set; }
-        public string Number { get; private set; }
-        public string? Neighborhood { get; private set; } // Opcional no banco, mas deve ser mapeável
-        public string City { get; private set; }
-        public string State { get; private set; }
-        public string ZipCode { get; private set; }
-        public bool IsDefault { get; private set; }
+        CustomerId = customerId;
+        AddressType = addressType;
+        Street = street;
+        Number = number;
+        Neighborhood = neighborhood;
+        City = city;
+        State = state;
+        ZipCode = zipCode;
+        Country = country;
+        IsDefault = isDefault;
+    }
 
-        // Construtor para ORMs/Mappers
-        protected Address() { }
+    protected Address() { }
 
-        // Construtor principal com todas as propriedades
-        public Address(
-            int customerId,
-            AddressType addressType,
-            string street,
-            string number,
-            string city,
-            string state,
-            string zipCode,
-            string? neighborhood = null,
-            bool isDefault = false)
-        {
-            Validate(customerId, addressType, street, number, city, state, zipCode);
+    public void SetAsDefault()
+    {
+        IsDefault = true;
+        UpdatedAt = DateTime.UtcNow;
+    }
 
-            CustomerId = customerId;
-            AddressType = addressType;
-            Street = street;
-            Number = number;
-            Neighborhood = neighborhood;
-            City = city;
-            State = state;
-            ZipCode = zipCode;
-            IsDefault = isDefault;
-        }
+    public void SetNonDefault()
+    {
+        IsDefault = false;
+        UpdatedAt = DateTime.UtcNow;
+    }
 
-        public static Address CreateDefault(
-            int customerId,
-            AddressType addressType,
-            string street,
-            string number,
-            string city,
-            string state,
-            string zipCode,
-            string? neighborhood = null)
-        {
-            return new Address(
-                customerId,
-                addressType,
-                street,
-                number,
-                city,
-                state,
-                zipCode,
-                neighborhood,
-                isDefault: true);
-        }
-
-        public void SetAsDefault() => IsDefault = true;
-        public void SetNonDefault() => IsDefault = false;
-
-        public void UpdateNeighborhood(string? neighborhood)
-        {
-            Neighborhood = neighborhood;
-        }
-
-        private void Validate(int customerId, AddressType addressType, string street, string number, string city, string state, string zipCode)
-        {
-            if (customerId <= 0)
-                throw new DomainException("CustomerId inválido.");
-
-            if (addressType == null)
-                throw new DomainException("AddressType é obrigatório.");
-
-            if (string.IsNullOrWhiteSpace(street))
-                throw new DomainException("Street é obrigatório.");
-
-            if (string.IsNullOrWhiteSpace(number))
-                throw new DomainException("Number é obrigatório.");
-
-            if (string.IsNullOrWhiteSpace(city))
-                throw new DomainException("City é obrigatório.");
-
-            if (string.IsNullOrWhiteSpace(state))
-                throw new DomainException("State é obrigatório.");
-
-            if (string.IsNullOrWhiteSpace(zipCode))
-                throw new DomainException("ZipCode é obrigatório.");
-        }
+    public void Update(string street, string number, string? complement, string neighborhood, string city, string state, ZipCode zipCode)
+    {
+        Street = street;
+        Number = number;
+        Complement = complement;
+        Neighborhood = neighborhood;
+        City = city;
+        State = state;
+        ZipCode = zipCode;
+        UpdatedAt = DateTime.UtcNow;
     }
 }

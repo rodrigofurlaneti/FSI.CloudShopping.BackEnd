@@ -1,51 +1,49 @@
-﻿using FSI.CloudShopping.Domain.Interfaces;
-using Microsoft.Extensions.Configuration;
-using System.Net.Http;
-using System.Text;
-using System.Text.Json;
+namespace FSI.CloudShopping.Infrastructure.Services;
 
-namespace FSI.CloudShopping.Infrastructure.Services
+using FSI.CloudShopping.Application.Interfaces;
+using Microsoft.Extensions.Logging;
+
+public class EmailService : IEmailService
 {
-    public class EmailService : IEmailService
+    private readonly ILogger<EmailService> _logger;
+
+    public EmailService(ILogger<EmailService> logger)
     {
-        private readonly IConfiguration _config;
-        private static readonly HttpClient _httpClient = new HttpClient();
-        public EmailService(IConfiguration config)
-        {
-            _config = config;
-        }
-        public async Task SendResetPasswordEmailAsync(string email, string newPassword)
-        {
-            var settings = _config.GetSection("EmailSettings");
-            var request = new HttpRequestMessage(HttpMethod.Post, settings["PrimaryDomain"]);
-            request.Headers.Add("api-key", settings["UsernamePassword"]);
-            var mailBody = new
-            {
-                sender = new { name = "FSI CloudShopping", email = settings["FromEmail"] },
-                to = new[] { new { email = email } },
-                subject = "Sua Nova Senha - FSI CloudShopping",
-                htmlContent = $@"
-                    <html>
-                        <body>
-                            <h2>Olá!</h2>
-                            <p>Sua senha foi resetada com sucesso.</p>
-                            <p>Sua nova senha temporária é: <strong>{newPassword}</strong></p>
-                            <br>
-                            <p><i>Recomendamos trocar esta senha no seu próximo acesso.</i></p>
-                        </body>
-                    </html>"
-            };
-            request.Content = new StringContent(
-                JsonSerializer.Serialize(mailBody),
-                Encoding.UTF8,
-                "application/json"
-            );
-            var response = await _httpClient.SendAsync(request);
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorDetail = await response.Content.ReadAsStringAsync();
-                throw new Exception($"Falha na API Brevo: {errorDetail}");
-            }
-        }
+        _logger = logger;
+    }
+
+    public async Task SendWelcomeEmailAsync(string email, string name, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Sending welcome email to {Email}", email);
+        // TODO: Implement actual email sending using SMTP
+        await Task.CompletedTask;
+    }
+
+    public async Task SendPasswordResetEmailAsync(string email, string resetToken, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Sending password reset email to {Email}", email);
+        // TODO: Implement actual email sending using SMTP
+        await Task.CompletedTask;
+    }
+
+    public async Task SendOrderConfirmationEmailAsync(string email, string orderNumber, decimal totalAmount, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Sending order confirmation email to {Email} for order {OrderNumber}", email, orderNumber);
+        // TODO: Implement actual email sending using SMTP
+        await Task.CompletedTask;
+    }
+
+    public async Task SendShippingNotificationEmailAsync(string email, string orderNumber, string trackingNumber, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Sending shipping notification email to {Email} for order {OrderNumber}", email, orderNumber);
+        // TODO: Implement actual email sending using SMTP
+        await Task.CompletedTask;
+    }
+
+    public async Task SendRefundNotificationEmailAsync(string email, string orderNumber, decimal refundAmount, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Sending refund notification email to {Email} for order {OrderNumber}", email, orderNumber);
+        // TODO: Implement actual email sending using SMTP
+        await Task.CompletedTask;
     }
 }

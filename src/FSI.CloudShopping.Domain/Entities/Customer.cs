@@ -1,141 +1,196 @@
-﻿using FSI.CloudShopping.Domain.Core;
+namespace FSI.CloudShopping.Domain.Entities;
+
+using FSI.CloudShopping.Domain.Core;
+using FSI.CloudShopping.Domain.Enums;
 using FSI.CloudShopping.Domain.ValueObjects;
 
-namespace FSI.CloudShopping.Domain.Entities
+/// <summary>
+/// Aggregate root for Customer. Represents a customer in the e-commerce system.
+/// A customer can be a Guest, Lead, B2C (Individual), or B2B (Company).
+/// </summary>
+public class Customer : AggregateRoot<Guid>
 {
-    public class Customer : Entity
+    public Email Email { get; private set; }
+    public Password? Password { get; private set; }
+    public CustomerType Type { get; private set; }
+    public Guid SessionToken { get; private set; }
+    public bool IsActive { get; private set; }
+    public string? RefreshToken { get; private set; }
+    public DateTime? RefreshTokenExpiry { get; private set; }
+    public string? GeoLocation { get; private set; }
+
+    // Navigations
+    public Individual? Individual { get; private set; }
+    public Company? Company { get; private set; }
+    private readonly List<Address> _addresses = [];
+    public IReadOnlyCollection<Address> Addresses => _addresses.AsReadOnly();
+
+    private readonly List<Contact> _contacts = [];
+    public IReadOnlyCollection<Contact> Contacts => _contacts.AsReadOnly();
+
+    public Customer(Guid id, Email email, CustomerType type) : base(id)
     {
-        public Email? Email { get; private set; }
-        public Password? Password { get; private set; }
-        public CustomerType CustomerType { get; private set; }
-        public Guid SessionToken { get; private set; }
-        public bool IsActive { get; private set; }
-        public bool IsTemporaryPassword { get; private set; }
-        public GeoLocation? GeoLocation { get; private set; }
-        public DeviceInfo? DeviceInfo { get; private set; }
-        public virtual Individual? Individual { get; private set; }
-        public virtual Company? Company { get; private set; }
+        Email = email;
+        Type = type;
+        SessionToken = Guid.NewGuid();
+        IsActive = true;
+        CreatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+    }
 
-        private readonly List<Address> _addresses = new();
-        public virtual IReadOnlyCollection<Address> Addresses => _addresses.AsReadOnly();
+    protected Customer() { }
 
-        private readonly List<Contact> _contacts = new();
-        public virtual IReadOnlyCollection<Contact> Contacts => _contacts.AsReadOnly();
+    public static Customer CreateGuest(Email email)
+    {
+        var customer = new Customer(Guid.NewGuid(), email, CustomerType.Guest);
+        customer.RaiseDomainEvent(new CustomerCreatedEvent(customer.Id, customer.Email.Value, CustomerType.Guest));
+        return customer;
+    }
 
-        protected Customer() { }
+    public static Customer CreateLead(Email email)
+    {
+        var customer = new Customer(Guid.NewGuid(), email, CustomerType.Lead);
+        customer.RaiseDomainEvent(new CustomerCreatedEvent(customer.Id, customer.Email.Value, CustomerType.Lead));
+        return customer;
+    }
 
-        // 🔹 Criação do Guest (primeiro acesso)
-        public Customer(
-            Guid sessionToken,
-            decimal? latitude = null,
-            decimal? longitude = null,
-            DeviceInfo? deviceInfo = null)
+    public void BecomeLead()
+    {
+        if (Type != CustomerType.Guest)
+            throw new DomainException("Only guest customers can become leads.");
+
+        Type = CustomerType.Lead;
+        UpdatedAt = DateTime.UtcNow;
+        RaiseDomainEvent(new CustomerBecameLeadEvent(Id, Email.Value));
+    }
+
+    public void BecomeIndividual(PersonName fullName, TaxId taxId, DateTime birthDate)
+    {
+        if (Type != CustomerType.Lead && Type != CustomerType.B2C)
+            throw new DomainException("Only leads or existing B2C can become individual customers.");
+
+        if (Individual == null)
         {
-            if (sessionToken == Guid.Empty)
-                throw new DomainException("SessionToken inválido.");
-
-            SessionToken = sessionToken;
-
-            if (latitude.HasValue && longitude.HasValue)
-                GeoLocation = new GeoLocation(latitude.Value, longitude.Value);
-
-            DeviceInfo = deviceInfo;
-
-            CustomerType = CustomerType.Guest;
-            IsActive = true;
+            Individual = new Individual(Guid.NewGuid(), Id, taxId, fullName, birthDate);
         }
 
-        // 🔹 Atualização explícita de Geolocalização
-        public void UpdateGeolocation(decimal latitude, decimal longitude)
+        Type = CustomerType.B2C;
+        UpdatedAt = DateTime.UtcNow;
+        RaiseDomainEvent(new CustomerBecameB2CEvent(Id, Email.Value, fullName.FullName, taxId.Value));
+    }
+
+    public void BecomeCompany(string companyName, BusinessTaxId businessTaxId, string? stateTaxId = null, string? tradeName = null)
+    {
+        if (Type != CustomerType.Lead && Type != CustomerType.B2B)
+            throw new DomainException("Only leads or existing B2B can become company customers.");
+
+        if (Company == null)
         {
-            GeoLocation = new GeoLocation(latitude, longitude);
+            Company = new Company(Guid.NewGuid(), Id, businessTaxId, companyName, stateTaxId, tradeName);
         }
 
-        // 🔹 Guest → Lead
-        public void BecomeLead(Email email, Password password)
+        Type = CustomerType.B2B;
+        UpdatedAt = DateTime.UtcNow;
+        RaiseDomainEvent(new CustomerBecameB2BEvent(Id, Email.Value, companyName, businessTaxId.Value));
+    }
+
+    public void SetPassword(Password password)
+    {
+        Password = password;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ResetPassword(Password newPassword)
+    {
+        Password = newPassword;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void AddAddress(Address address)
+    {
+        if (_addresses.Any(a => a.AddressType == address.AddressType && a.IsDefault))
         {
-            if (CustomerType != CustomerType.Guest)
-                throw new DomainException("Cliente já não é mais Guest.");
-
-            Email = email ?? throw new DomainException("Email é obrigatório para um Lead.");
-            Password = password ?? throw new DomainException("Senha é obrigatória para um Lead.");
-
-            CustomerType = CustomerType.Lead;
-        }
-
-        // 🔹 Lead → B2C
-        public void BecomeIndividual(string taxId, string fullName, DateTime? birthDate)
-        {
-            if (CustomerType == CustomerType.Guest)
-                throw new DomainException("É necessário tornar-se um Lead antes de completar o cadastro B2C.");
-
-            if (CustomerType == CustomerType.B2B)
-                throw new DomainException("Cliente B2B não pode ser convertido para B2C.");
-
-            var voTaxId = new TaxId(taxId);
-            var voFullName = new PersonName(fullName);
-
-            Individual = new Individual(Id, voTaxId, voFullName, birthDate);
-            CustomerType = CustomerType.B2C;
-        }
-
-        // 🔹 Lead → B2B
-        public void BecomeCompany(string businessTaxId, string name, string? stateTaxId)
-        {
-            if (CustomerType == CustomerType.Guest)
-                throw new DomainException("É necessário tornar-se um Lead antes de completar o cadastro B2B.");
-
-            if (CustomerType == CustomerType.B2C)
-                throw new DomainException("Cliente B2C não pode ser convertido para B2B.");
-
-            var voBusinessTaxId = new BusinessTaxId(businessTaxId);
-
-            Company = new Company(Id, voBusinessTaxId, name, stateTaxId);
-            CustomerType = CustomerType.B2B;
-        }
-
-        // 🔹 Endereços
-        public void AddAddress(Address address)
-        {
-            if (address == null)
-                throw new DomainException("Endereço inválido.");
-
-            if (address.IsDefault)
+            var defaultAddress = _addresses.FirstOrDefault(a => a.AddressType == address.AddressType && a.IsDefault);
+            if (defaultAddress != null)
             {
-                foreach (var a in _addresses)
-                    a.SetNonDefault();
+                defaultAddress.SetNonDefault();
             }
-
-            _addresses.Add(address);
         }
 
-        // 🔹 Contatos (apenas B2B)
-        public void AddContact(Contact contact)
+        _addresses.Add(address);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void RemoveAddress(Guid addressId)
+    {
+        var address = _addresses.FirstOrDefault(a => a.Id == addressId);
+        if (address != null)
         {
-            if (CustomerType != CustomerType.B2B)
-                throw new DomainException("Apenas clientes B2B podem ter contatos adicionais.");
-
-            if (contact == null)
-                throw new DomainException("Contato inválido.");
-
-            if (_contacts.Any(x => x.Email.Address == contact.Email.Address))
-                throw new DomainException("Este contato já está vinculado a esta empresa.");
-
-            _contacts.Add(contact);
+            _addresses.Remove(address);
+            UpdatedAt = DateTime.UtcNow;
         }
+    }
 
-        // 🔹 Alterar Senha
-        public void ResetPassword(Password newPassword)
+    public void AddContact(Contact contact)
+    {
+        if (_contacts.Any(c => c.IsPrimary))
         {
-            if (this.CustomerType == CustomerType.Guest)
-                throw new DomainException("Não é possível resetar a senha de um usuário Guest.");
-
-            this.Password = newPassword;
-            this.IsTemporaryPassword = true;
+            var primaryContact = _contacts.First(c => c.IsPrimary);
+            if (contact.IsPrimary)
+            {
+                primaryContact.SetNonPrimary();
+            }
         }
 
-        // 🔹 Ativação
-        public void Deactivate() => IsActive = false;
-        public void Activate() => IsActive = true;
+        _contacts.Add(contact);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void RemoveContact(Guid contactId)
+    {
+        var contact = _contacts.FirstOrDefault(c => c.Id == contactId);
+        if (contact != null)
+        {
+            _contacts.Remove(contact);
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public void UpdateRefreshToken(string token, DateTime expiry)
+    {
+        RefreshToken = token;
+        RefreshTokenExpiry = expiry;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void RevokeRefreshToken()
+    {
+        RefreshToken = null;
+        RefreshTokenExpiry = null;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetGeoLocation(string geoLocation)
+    {
+        GeoLocation = geoLocation;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Deactivate()
+    {
+        IsActive = false;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Activate()
+    {
+        IsActive = true;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void RefreshSessionToken()
+    {
+        SessionToken = Guid.NewGuid();
+        UpdatedAt = DateTime.UtcNow;
     }
 }

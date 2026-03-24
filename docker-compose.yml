@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: cloudshopping_mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: CloudShoppingDB
+      MYSQL_USER: cloudshopping_user
+      MYSQL_PASSWORD: cloudshopping_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - cloudshopping_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: cloudshopping_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - cloudshopping_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: src/FSI.CloudShopping.WebAPI/Dockerfile
+    container_name: cloudshopping_api
+    ports:
+      - "5000:80"
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=mysql;Port=3306;Database=CloudShoppingDB;User Id=cloudshopping_user;Password=cloudshopping_password;CharSet=utf8mb4;
+      - JwtSettings__Secret=YourSuperSecretKeyHereMustBe32CharactersLong!!!
+      - JwtSettings__Issuer=FSI.CloudShopping
+      - JwtSettings__Audience=FSI.CloudShopping.Clients
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cloudshopping_network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  cloudshopping_network:
+    driver: bridge

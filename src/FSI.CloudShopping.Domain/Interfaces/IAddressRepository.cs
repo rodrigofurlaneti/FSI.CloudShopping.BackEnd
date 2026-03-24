@@ -1,9 +1,9 @@
-﻿using FSI.CloudShopping.Domain.Entities;
-namespace FSI.CloudShopping.Domain.Interfaces
+namespace FSI.CloudShopping.Domain.Interfaces;
+
+using FSI.CloudShopping.Domain.Entities;
+
+public interface IAddressRepository : IRepository<Address, Guid>
 {
-    public interface IAddressRepository : IRepository<Address>
-    {
-        Task<IEnumerable<Address>> GetByCustomerIdAsync(int customerId);
-        Task<Address?> GetDefaultAddressAsync(int customerId);
-    }
+    Task<IEnumerable<Address>> GetByCustomerIdAsync(Guid customerId, CancellationToken cancellationToken = default);
+    Task<Address?> GetDefaultByCustomerAsync(Guid customerId, CancellationToken cancellationToken = default);
 }
