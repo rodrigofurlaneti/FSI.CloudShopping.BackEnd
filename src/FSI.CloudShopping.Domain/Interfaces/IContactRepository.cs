@@ -1,9 +1,12 @@
-﻿using FSI.CloudShopping.Domain.Entities;
-using FSI.CloudShopping.Domain.Interfaces;
-namespace FSI.CloudShopping.Domain.Interfaces
+﻿namespace FSI.CloudShopping.Domain.Interfaces;
+
+using FSI.CloudShopping.Domain.Entities;
+
+/// <summary>
+/// Repository contract for Contact entity.
+/// </summary>
+public interface IContactRepository : IRepository<Contact, Guid>
 {
-    public interface IContactRepository : IRepository<Contact>
-    {
-        Task<IEnumerable<Contact>> GetByCustomerIdAsync(int customerId);
-    }
+    Task<IEnumerable<Contact>> GetByCustomerIdAsync(Guid customerId, CancellationToken cancellationToken = default);
+    Task<Contact?> GetPrimaryContactAsync(Guid customerId, CancellationToken cancellationToken = default);
 }

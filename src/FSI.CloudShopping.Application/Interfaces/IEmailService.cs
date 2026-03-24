@@ -8,4 +8,10 @@ public interface IEmailService
     Task SendShippingNotificationEmailAsync(string email, string orderNumber, string trackingNumber, CancellationToken cancellationToken = default);
     Task SendRefundNotificationEmailAsync(string email, string orderNumber, decimal refundAmount, CancellationToken cancellationToken = default);
     Task SendPaymentFailedEmailAsync(string email, string orderNumber, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Alias used by the SAGA SendNotificationStep.
+    /// Delegates to SendOrderConfirmationEmailAsync for consistency.
+    /// </summary>
+    Task SendOrderConfirmationAsync(string toEmail, string orderNumber, decimal totalAmount, CancellationToken cancellationToken = default);
 }

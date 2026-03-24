@@ -3,20 +3,20 @@ namespace FSI.CloudShopping.Infrastructure.Services;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FSI.CloudShopping.Application.Interfaces;
+using FSI.CloudShopping.Domain.Entities;
 using FSI.CloudShopping.Domain.Enums;
-using FSI.CloudShopping.Domain.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 /// <summary>
-/// Serviço de integração com MercadoPago.
-/// Suporta Pix, Cartão de Crédito/Débito e Boleto Bancário.
+/// MercadoPago payment gateway integration.
+/// Implements IPaymentGatewayService following Clean Architecture (Infrastructure layer).
+/// Supports: Pix, Credit/Debit Card, Bank Slip, Manual Transfer.
 /// </summary>
-public class MercadoPagoPaymentService : IPaymentGatewayService
+public sealed class MercadoPagoPaymentService : IPaymentGatewayService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<MercadoPagoPaymentService> _logger;
-    private readonly string _accessToken;
     private const string BaseUrl = "https://api.mercadopago.com";
 
     public MercadoPagoPaymentService(
@@ -26,16 +26,26 @@ public class MercadoPagoPaymentService : IPaymentGatewayService
     {
         _httpClient = httpClient;
         _logger = logger;
-        _accessToken = configuration["PaymentGateway:MercadoPago:AccessToken"] ?? string.Empty;
-        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_accessToken}");
+
+        var accessToken = configuration["PaymentGateway:MercadoPago:AccessToken"] ?? string.Empty;
+        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
     }
 
-    public async Task<PaymentGatewayResult> ProcessPaymentAsync(
-        PaymentRequest request, CancellationToken cancellationToken = default)
+    // ── IPaymentGatewayService ────────────────────────────────────────────────
+
+    public async Task<ProcessPaymentResult> ProcessPaymentAsync(
+        ProcessPaymentInput input, CancellationToken cancellationToken = default)
     {
         try
         {
-            var payload = BuildPaymentPayload(request);
+            var payload = new
+            {
+                transaction_amount = input.Amount,
+                description = input.Description ?? $"Order {input.OrderId}",
+                token = input.CardToken,
+                external_reference = input.OrderId.ToString()
+            };
+
             var response = await _httpClient.PostAsJsonAsync(
                 $"{BaseUrl}/v1/payments", payload, cancellationToken);
 
@@ -43,9 +53,13 @@ public class MercadoPagoPaymentService : IPaymentGatewayService
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("MercadoPago error: {Status} - {Content}",
-                    response.StatusCode, content);
-                return PaymentGatewayResult.Failed($"Gateway error: {response.StatusCode}");
+                _logger.LogError("MercadoPago error: {Status} - {Content}", response.StatusCode, content);
+                return new ProcessPaymentResult
+                {
+                    IsSuccessful = false,
+                    Message = $"Gateway error: {response.StatusCode}",
+                    ProcessedAt = DateTime.UtcNow
+                };
             }
 
             var doc = JsonDocument.Parse(content);
@@ -53,43 +67,47 @@ public class MercadoPagoPaymentService : IPaymentGatewayService
             var status = root.GetProperty("status").GetString();
             var id = root.GetProperty("id").GetInt64().ToString();
 
-            return status switch
+            return new ProcessPaymentResult
             {
-                "approved" => PaymentGatewayResult.Approved(id, content),
-                "pending" => PaymentGatewayResult.Pending(id, content),
-                "in_process" => PaymentGatewayResult.Pending(id, content),
-                _ => PaymentGatewayResult.Failed($"Payment status: {status}")
+                IsSuccessful = status is "approved",
+                TransactionId = id,
+                Message = status,
+                AuthorizationCode = id,
+                ProcessedAt = DateTime.UtcNow
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing payment through MercadoPago");
-            return PaymentGatewayResult.Failed("Unexpected error during payment processing.");
+            _logger.LogError(ex, "Error processing payment via MercadoPago.");
+            return new ProcessPaymentResult { IsSuccessful = false, Message = ex.Message, ProcessedAt = DateTime.UtcNow };
         }
     }
 
-    public async Task<PaymentGatewayResult> RefundPaymentAsync(
+    public async Task<RefundPaymentResult> RefundPaymentAsync(
         string transactionId, decimal amount, CancellationToken cancellationToken = default)
     {
         try
         {
-            var payload = new { amount };
             var response = await _httpClient.PostAsJsonAsync(
-                $"{BaseUrl}/v1/payments/{transactionId}/refunds", payload, cancellationToken);
+                $"{BaseUrl}/v1/payments/{transactionId}/refunds",
+                new { amount },
+                cancellationToken);
 
-            if (!response.IsSuccessStatusCode)
-                return PaymentGatewayResult.Failed("Refund failed.");
-
-            return PaymentGatewayResult.Approved(transactionId, "Refunded");
+            return new RefundPaymentResult
+            {
+                IsSuccessful = response.IsSuccessStatusCode,
+                RefundTransactionId = transactionId,
+                Message = response.IsSuccessStatusCode ? "Refunded" : "Refund failed"
+            };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error refunding payment {TransactionId}", transactionId);
-            return PaymentGatewayResult.Failed("Unexpected error during refund.");
+            return new RefundPaymentResult { IsSuccessful = false, Message = ex.Message };
         }
     }
 
-    public async Task<PaymentGatewayResult> GetTransactionStatusAsync(
+    public async Task<TransactionStatusResult> GetTransactionStatusAsync(
         string transactionId, CancellationToken cancellationToken = default)
     {
         try
@@ -99,63 +117,70 @@ public class MercadoPagoPaymentService : IPaymentGatewayService
 
             var content = await response.Content.ReadAsStringAsync(cancellationToken);
             if (!response.IsSuccessStatusCode)
-                return PaymentGatewayResult.Failed("Could not retrieve transaction status.");
+                return new TransactionStatusResult { TransactionId = transactionId, Status = "error" };
 
             var doc = JsonDocument.Parse(content);
-            var status = doc.RootElement.GetProperty("status").GetString();
-
-            return status switch
+            return new TransactionStatusResult
             {
-                "approved" => PaymentGatewayResult.Approved(transactionId, content),
-                "pending" or "in_process" => PaymentGatewayResult.Pending(transactionId, content),
-                _ => PaymentGatewayResult.Failed($"Status: {status}")
+                TransactionId = transactionId,
+                Status = doc.RootElement.GetProperty("status").GetString() ?? "unknown",
+                Amount = doc.RootElement.TryGetProperty("transaction_amount", out var amtProp)
+                    ? amtProp.GetDecimal() : 0,
+                CreatedAt = DateTime.UtcNow
             };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching transaction status {TransactionId}", transactionId);
-            return PaymentGatewayResult.Failed("Unexpected error fetching status.");
+            return new TransactionStatusResult { TransactionId = transactionId, Status = "error" };
         }
     }
 
-    private static object BuildPaymentPayload(PaymentRequest request)
+    /// <summary>
+    /// Charges a Payment domain aggregate. Used by the SAGA ProcessPaymentStep.
+    /// Maps the Payment entity to a gateway request and returns a structured result.
+    /// </summary>
+    public async Task<GatewayChargeResult> ChargeAsync(Payment payment, CancellationToken cancellationToken = default)
     {
-        var paymentType = request.Method switch
+        try
         {
-            PaymentMethod.Pix => new { payment_method_id = "pix" },
-            PaymentMethod.BankSlip => new { payment_method_id = "bolbradesco" },
-            PaymentMethod.CreditCard => new { payment_method_id = "credit_card" },
-            PaymentMethod.DebitCard => new { payment_method_id = "debit_card" },
-            _ => new { payment_method_id = "pix" }
-        };
+            var paymentMethodId = payment.Method switch
+            {
+                PaymentMethod.Pix => "pix",
+                PaymentMethod.BankSlip => "bolbradesco",
+                PaymentMethod.CreditCard => "credit_card",
+                PaymentMethod.DebitCard => "debit_card",
+                PaymentMethod.ManualTransfer => "bank_transfer",
+                _ => "pix"
+            };
 
-        return new
+            var payload = new
+            {
+                transaction_amount = payment.Amount.Amount,
+                payment_method_id = paymentMethodId,
+                external_reference = payment.OrderId.ToString()
+            };
+
+            var response = await _httpClient.PostAsJsonAsync(
+                $"{BaseUrl}/v1/payments", payload, cancellationToken);
+
+            var content = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+                return GatewayChargeResult.Fail($"Gateway rejected: {response.StatusCode}");
+
+            var doc = JsonDocument.Parse(content);
+            var status = doc.RootElement.GetProperty("status").GetString();
+            var txnId = doc.RootElement.GetProperty("id").GetInt64().ToString();
+
+            return status is "approved" or "pending"
+                ? GatewayChargeResult.Ok(txnId, content)
+                : GatewayChargeResult.Fail($"Gateway status: {status}");
+        }
+        catch (Exception ex)
         {
-            transaction_amount = request.Amount,
-            description = $"Pedido {request.OrderNumber}",
-            payment_method_id = paymentType.payment_method_id,
-            installments = request.InstallmentCount,
-            token = request.CardToken,
-            external_reference = request.OrderNumber
-        };
+            _logger.LogError(ex, "Error charging payment {PaymentId} via MercadoPago.", payment.Id);
+            return GatewayChargeResult.Fail(ex.Message);
+        }
     }
-}
-
-/// <summary>Result padronizado do gateway de pagamento.</summary>
-public class PaymentGatewayResult
-{
-    public bool IsSuccessful { get; private set; }
-    public bool IsPending { get; private set; }
-    public string? TransactionId { get; private set; }
-    public string? GatewayResponse { get; private set; }
-    public string? ErrorMessage { get; private set; }
-
-    public static PaymentGatewayResult Approved(string transactionId, string response) =>
-        new() { IsSuccessful = true, TransactionId = transactionId, GatewayResponse = response };
-
-    public static PaymentGatewayResult Pending(string transactionId, string response) =>
-        new() { IsPending = true, TransactionId = transactionId, GatewayResponse = response };
-
-    public static PaymentGatewayResult Failed(string error) =>
-        new() { ErrorMessage = error };
 }

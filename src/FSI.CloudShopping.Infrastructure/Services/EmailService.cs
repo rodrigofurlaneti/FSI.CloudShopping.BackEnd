@@ -46,4 +46,14 @@ public class EmailService : IEmailService
         // TODO: Implement actual email sending using SMTP
         await Task.CompletedTask;
     }
+
+    public async Task SendPaymentFailedEmailAsync(string email, string orderNumber, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Sending payment failed email to {Email} for order {OrderNumber}", email, orderNumber);
+        await Task.CompletedTask;
+    }
+
+    /// <summary>Alias used by the SAGA SendNotificationStep.</summary>
+    public Task SendOrderConfirmationAsync(string toEmail, string orderNumber, decimal totalAmount, CancellationToken cancellationToken = default)
+        => SendOrderConfirmationEmailAsync(toEmail, orderNumber, totalAmount, cancellationToken);
 }

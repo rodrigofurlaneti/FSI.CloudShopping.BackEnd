@@ -56,30 +56,18 @@ public class ProcessPaymentCommandHandler : IRequestHandler<ProcessPaymentComman
         var payment = Domain.Entities.Payment.Create(request.OrderId, request.PaymentMethod, order.TotalAmount);
         await _paymentRepository.AddAsync(payment, cancellationToken);
 
-        // Process payment through gateway
-        var gatewayResult = await _paymentGateway.ProcessPaymentAsync(
-            new Domain.Interfaces.PaymentRequest
-            {
-                Amount = order.TotalAmount.Amount,
-                Currency = "BRL",
-                Method = request.PaymentMethod,
-                OrderNumber = order.OrderNumber,
-                CardToken = request.CardToken,
-                InstallmentCount = request.InstallmentCount ?? 1
-            },
-            cancellationToken
-        );
+        // Process payment through gateway (uses ChargeAsync from SAGA-compatible interface)
+        var gatewayResult = await _paymentGateway.ChargeAsync(payment, cancellationToken);
 
-        if (!gatewayResult.IsSuccessful)
+        if (!gatewayResult.Success)
         {
             payment.Fail(gatewayResult.ErrorMessage ?? "Payment processing failed");
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-            var failedDto = _mapper.Map<PaymentDto>(payment);
             return new Result<PaymentDto>.Failure(gatewayResult.ErrorMessage ?? "Payment failed");
         }
 
         // Authorize and capture
-        payment.Authorize(gatewayResult.TransactionId, gatewayResult.GatewayResponse);
+        payment.Authorize(gatewayResult.TransactionId!, gatewayResult.GatewayResponse);
         payment.Capture(gatewayResult.GatewayResponse);
 
         // Confirm order

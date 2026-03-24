@@ -1,10 +1,13 @@
-﻿using FSI.CloudShopping.Domain.Entities;
+﻿namespace FSI.CloudShopping.Domain.Interfaces;
 
-namespace FSI.CloudShopping.Domain.Interfaces
+using FSI.CloudShopping.Domain.Entities;
+
+/// <summary>
+/// Repository contract for Authentication entity.
+/// </summary>
+public interface IAuthenticationRepository : IRepository<Authentication, int>
 {
-    public interface IAuthenticationRepository : IRepository<Authentication>
-    {
-        Task<int> InsertAsync(string email, bool isAuthorized);
-       Task<bool> GetAccessAsync(string email, string password);
-    }
+    Task<int> InsertAsync(string email, bool isAuthorized, CancellationToken cancellationToken = default);
+    Task<bool> GetAccessAsync(string email, string password, CancellationToken cancellationToken = default);
+    Task<Authentication?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
 }

@@ -1,10 +1,32 @@
 namespace FSI.CloudShopping.Application.Interfaces;
 
+using FSI.CloudShopping.Domain.Entities;
+
 public interface IPaymentGatewayService
 {
     Task<ProcessPaymentResult> ProcessPaymentAsync(ProcessPaymentInput input, CancellationToken cancellationToken = default);
     Task<RefundPaymentResult> RefundPaymentAsync(string transactionId, decimal amount, CancellationToken cancellationToken = default);
     Task<TransactionStatusResult> GetTransactionStatusAsync(string transactionId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Charges a Payment aggregate via the gateway. Used by the SAGA step.
+    /// </summary>
+    Task<GatewayChargeResult> ChargeAsync(Payment payment, CancellationToken cancellationToken = default);
+}
+
+/// <summary>Result returned by ChargeAsync — used by the SAGA ProcessPaymentStep.</summary>
+public sealed class GatewayChargeResult
+{
+    public bool Success { get; init; }
+    public string? TransactionId { get; init; }
+    public string? GatewayResponse { get; init; }
+    public string? ErrorMessage { get; init; }
+
+    public static GatewayChargeResult Ok(string transactionId, string? gatewayResponse = null)
+        => new() { Success = true, TransactionId = transactionId, GatewayResponse = gatewayResponse };
+
+    public static GatewayChargeResult Fail(string errorMessage)
+        => new() { Success = false, ErrorMessage = errorMessage };
 }
 
 public class ProcessPaymentInput

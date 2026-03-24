@@ -1,0 +1,39 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31919.166
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FSI.CloudShopping.Application", "src\FSI.CloudShopping.Application\FSI.CloudShopping.Application.csproj", "{6D9B2EA0-E954-0397-8A9C-B11590B0F8B8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FSI.CloudShopping.Domain", "src\FSI.CloudShopping.Domain\FSI.CloudShopping.Domain.csproj", "{407A4736-0A86-EAE4-E595-5ED2E7B2FEFB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FSI.CloudShopping.Infrastructure", "src\FSI.CloudShopping.Infrastructure\FSI.CloudShopping.Infrastructure.csproj", "{02FB0211-1303-AED8-866A-AF7C3D711CB1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FSI.CloudShopping.API", "src\FSI.CloudShopping.WebAPI\FSI.CloudShopping.API.csproj", "{7F05A016-723A-E40D-4424-74770412FB80}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6D9B2EA0-E954-0397-8A9C-B11590B0F8B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6D9B2EA0-E954-0397-8A9C-B11590B0F8B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6D9B2EA0-E954-0397-8A9C-B11590B0F8B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6D9B2EA0-E954-0397-8A9C-B11590B0F8B8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{407A4736-0A86-EAE4-E595-5ED2E7B2FEFB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{407A4736-0A86-EAE4-E595-5ED2E7B2FEFB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{407A4736-0A86-EAE4-E595-5ED2E7B2FEFB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{407A4736-0A86-EAE4-E595-5ED2E7B2FEFB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{02FB0211-1303-AED8-866A-AF7C3D711CB1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{02FB0211-1303-AED8-866A-AF7C3D711CB1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{02FB0211-1303-AED8-866A-AF7C3D711CB1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{02FB0211-1303-AED8-866A-AF7C3D711CB1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7F05A016-723A-E40D-4424-74770412FB80}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F05A016-723A-E40D-4424-74770412FB80}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F05A016-723A-E40D-4424-74770412FB80}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F05A016-723A-E40D-4424-74770412FB80}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

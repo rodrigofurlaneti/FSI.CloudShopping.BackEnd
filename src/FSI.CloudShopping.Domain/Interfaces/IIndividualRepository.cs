@@ -1,9 +1,12 @@
-﻿using FSI.CloudShopping.Domain.Entities;
-namespace FSI.CloudShopping.Domain.Interfaces
+﻿namespace FSI.CloudShopping.Domain.Interfaces;
+
+using FSI.CloudShopping.Domain.Entities;
+
+/// <summary>
+/// Repository contract for Individual entity (B2C customers).
+/// </summary>
+public interface IIndividualRepository : IRepository<Individual, Guid>
 {
-    public interface IIndividualRepository : IRepository<Individual>
-    {
-        Task<Individual?> GetByTaxIdAsync(string taxId);
-        Task<IEnumerable<Individual>> GetByBirthMonthAsync(int month);
-    }
+    Task<Individual?> GetByTaxIdAsync(string taxId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Individual>> GetByBirthMonthAsync(int month, CancellationToken cancellationToken = default);
 }

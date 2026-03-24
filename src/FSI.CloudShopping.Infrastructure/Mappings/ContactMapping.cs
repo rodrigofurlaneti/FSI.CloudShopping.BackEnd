@@ -1,34 +1,37 @@
-﻿using FSI.CloudShopping.Domain.Entities;
+namespace FSI.CloudShopping.Infrastructure.Mappings;
+
+using FSI.CloudShopping.Domain.Entities;
 using FSI.CloudShopping.Domain.ValueObjects;
 using Microsoft.Data.SqlClient;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-namespace FSI.CloudShopping.Infrastructure.Mappings
+
+/// <summary>
+/// Maps SqlDataReader rows to Contact domain entities.
+/// Updated to use Guid IDs matching DDD Entity&lt;Guid&gt; base.
+/// </summary>
+public static class ContactMapping
 {
-    public static class ContactMapping
+    public static Contact ToContactEntity(this SqlDataReader reader)
     {
-        public static Contact ToContactEntity(this SqlDataReader reader)
-        {
-            var id = reader.GetInt32(reader.GetOrdinal("Id"));
-            var customerId = reader.GetInt32(reader.GetOrdinal("CustomerId"));
-            var fullName = reader["Name"].ToString() ?? string.Empty;
-            var emailAddress = reader["Email"].ToString() ?? string.Empty;
-            var phoneNumber = reader["Phone"].ToString() ?? string.Empty;
-            var position = reader["Position"].ToString() ?? string.Empty;
-            var contact = new Contact(
-                customerId,
-                new PersonName(fullName),
-                new Email(emailAddress),
-                new Phone(phoneNumber),
-                position
-            );
-            typeof(Contact).GetProperty("Id", BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy)
-                ?.SetValue(contact, id);
-            return contact;
-        }
+        var id = reader.GetGuid(reader.GetOrdinal("Id"));
+        var customerId = reader.GetGuid(reader.GetOrdinal("CustomerId"));
+        var name = reader["Name"].ToString() ?? string.Empty;
+        var emailAddress = reader["Email"].ToString() ?? string.Empty;
+        var phoneNumber = reader.IsDBNull(reader.GetOrdinal("Phone"))
+            ? null
+            : reader["Phone"].ToString();
+        var position = reader.IsDBNull(reader.GetOrdinal("Position"))
+            ? null
+            : reader["Position"].ToString();
+        var isPrimary = !reader.IsDBNull(reader.GetOrdinal("IsPrimary"))
+            && reader.GetBoolean(reader.GetOrdinal("IsPrimary"));
+
+        return new Contact(
+            id: id,
+            customerId: customerId,
+            name: name,
+            email: new Email(emailAddress),
+            phone: phoneNumber is not null ? new Phone(phoneNumber) : null,
+            position: position,
+            isPrimary: isPrimary);
     }
 }
