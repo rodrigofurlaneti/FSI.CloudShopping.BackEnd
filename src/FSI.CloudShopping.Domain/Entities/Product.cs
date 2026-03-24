@@ -3,6 +3,7 @@ namespace FSI.CloudShopping.Domain.Entities;
 using FSI.CloudShopping.Domain.Core;
 using FSI.CloudShopping.Domain.Enums;
 using FSI.CloudShopping.Domain.ValueObjects;
+using FSI.CloudShopping.Domain.Events;
 
 /// <summary>
 /// Aggregate root for Product. Represents a product in the e-commerce catalog.

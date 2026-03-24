@@ -110,14 +110,4 @@ public abstract class Result<T> : Result
         };
     }
 
-    // ── Static factory helpers ────────────────────────────────────────────────
-
-    /// <summary>Creates a successful result carrying <paramref name="value"/>.</summary>
-    public static Result<T> Success(T value) => new Success(value);
-
-    /// <summary>Creates a failure result with <paramref name="value"/> and an error message.</summary>
-    public static Result<T> Failure(T value, string error) => new Failure(error);
-
-    /// <summary>Creates a failure result with a list of errors.</summary>
-    public static Result<T> Failure(params string[] errors) => new Failure(errors);
 }

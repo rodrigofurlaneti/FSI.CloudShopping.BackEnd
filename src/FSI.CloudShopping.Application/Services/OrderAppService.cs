@@ -7,7 +7,7 @@ using FSI.CloudShopping.Domain.Interfaces;
 
 namespace FSI.CloudShopping.Application.Services
 {
-    public class OrderAppService : BaseAppService<Order, OrderDTO>, IOrderAppService
+    public class OrderAppService : BaseAppService<Order, int, OrderDTO>, IOrderAppService
     {
         private readonly IOrderRepository _orderRepository;
         private readonly ICartRepository _cartRepository;
@@ -25,15 +25,17 @@ namespace FSI.CloudShopping.Application.Services
             var cart = await _cartRepository.GetByCustomerIdAsync(request.CustomerId);
             if (cart == null || !cart.Items.Any())
                 throw new DomainException("Carrinho vazio ou não encontrado.");
-            var order = new Order(request.CustomerId, request.ShippingAddressId, cart.Items);
+            var subTotal = new Domain.ValueObjects.Money(cart.Items.Sum(i => i.UnitPrice.Amount * i.Quantity));
+            var zero = new Domain.ValueObjects.Money(0);
+            var order = Order.Create(request.CustomerId, request.ShippingAddressId, subTotal, zero, zero);
             await _orderRepository.AddAsync(order);
             await _cartRepository.RemoveAsync(cart.Id);
             await _orderRepository.SaveChangesAsync();
             return Mapper.Map<OrderDTO>(order);
         }
-        public async Task<IEnumerable<OrderDTO>> GetCustomerHistoryAsync(int customerId)
+        public async Task<IEnumerable<OrderDTO>> GetCustomerHistoryAsync(Guid customerId)
         {
-            var orders = await _orderRepository.GetOrdersByCustomerIdAsync(customerId);
+            var orders = await _orderRepository.GetByCustomerIdAsync(customerId);
             return Mapper.Map<IEnumerable<OrderDTO>>(orders);
         }
         public override Task<OrderDTO> AddAsync(OrderDTO dto)

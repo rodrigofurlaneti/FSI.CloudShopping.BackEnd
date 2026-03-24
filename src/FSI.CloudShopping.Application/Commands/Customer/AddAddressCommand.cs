@@ -1,6 +1,7 @@
 namespace FSI.CloudShopping.Application.Commands.Customer;
 
 using MediatR;
+using FSI.CloudShopping.Domain.Core;
 using AutoMapper;
 using FSI.CloudShopping.Application.Common;
 using FSI.CloudShopping.Application.DTOs;

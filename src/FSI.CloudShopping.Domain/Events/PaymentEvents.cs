@@ -35,11 +35,14 @@ public class PaymentFailedEvent : DomainEvent
     public int PaymentId { get; }
     public int OrderId { get; }
     public string Reason { get; }
+    /// <summary>Current retry attempt count — used by PaymentRetrySaga to enforce max retries.</summary>
+    public int RetryCount { get; }
 
-    public PaymentFailedEvent(int paymentId, int orderId, string reason)
+    public PaymentFailedEvent(int paymentId, int orderId, string reason, int retryCount = 0)
     {
         PaymentId = paymentId;
         OrderId = orderId;
         Reason = reason;
+        RetryCount = retryCount;
     }
 }

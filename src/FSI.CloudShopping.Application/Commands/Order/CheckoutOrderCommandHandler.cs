@@ -47,7 +47,7 @@ public sealed class CheckoutOrderCommandHandler : IRequestHandler<CheckoutOrderC
 
         if (result.Status == SagaStatus.Completed)
         {
-            return Result<CheckoutOrderResult>.Success(
+            return new Result<CheckoutOrderResult>.Success(
                 new CheckoutOrderResult(
                     SagaId: result.SagaId,
                     OrderId: result.OrderId!.Value,
@@ -56,13 +56,7 @@ public sealed class CheckoutOrderCommandHandler : IRequestHandler<CheckoutOrderC
         }
 
         _logger.LogWarning("Checkout SAGA {SagaId} failed: {Reason}", result.SagaId, result.FailureReason);
-        return Result<CheckoutOrderResult>.Failure(
-            new CheckoutOrderResult(
-                SagaId: result.SagaId,
-                OrderId: 0,
-                OrderNumber: string.Empty,
-                Status: result.Status.ToString(),
-                FailureReason: result.FailureReason),
+        return new Result<CheckoutOrderResult>.Failure(
             result.FailureReason ?? "Checkout could not be completed.");
     }
 }

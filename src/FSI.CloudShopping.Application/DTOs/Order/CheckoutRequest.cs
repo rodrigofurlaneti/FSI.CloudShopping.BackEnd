@@ -1,4 +1,4 @@
 ﻿namespace FSI.CloudShopping.Application.DTOs.Order
 {
-    public record CheckoutRequest(int CustomerId, int ShippingAddressId);
+    public record CheckoutRequest(Guid CustomerId, Guid ShippingAddressId);
 }

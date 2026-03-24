@@ -1,5 +1,4 @@
-﻿using FSI.CloudShopping.Application.DTOs;
-using FSI.CloudShopping.Application.DTOs.Customer;
+﻿using FSI.CloudShopping.Application.DTOs.Customer;
 
 namespace FSI.CloudShopping.Application.Interfaces
 {

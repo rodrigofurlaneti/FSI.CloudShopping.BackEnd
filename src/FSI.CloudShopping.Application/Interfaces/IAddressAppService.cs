@@ -3,7 +3,7 @@ namespace FSI.CloudShopping.Application.Interfaces
 {
     public interface IAddressAppService : IBaseAppService<AddressDTO>
     {
-        Task<IEnumerable<AddressDTO>> GetByCustomerIdAsync(int customerId);
-        Task SetDefaultAddressAsync(int addressId, int customerId);
+        Task<IEnumerable<AddressDTO>> GetByCustomerIdAsync(Guid customerId);
+        Task SetDefaultAddressAsync(Guid addressId, Guid customerId);
     }
 }

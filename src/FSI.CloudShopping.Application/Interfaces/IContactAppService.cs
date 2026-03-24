@@ -4,6 +4,6 @@ namespace FSI.CloudShopping.Application.Interfaces
 {
     public interface IContactAppService : IBaseAppService<ContactDTO>
     {
-        Task<IEnumerable<ContactDTO>> GetByCustomerIdAsync(int customerId);
+        Task<IEnumerable<ContactDTO>> GetByCustomerIdAsync(Guid customerId);
     }
 }

@@ -5,6 +5,6 @@ namespace FSI.CloudShopping.Application.Interfaces
     public interface IOrderAppService : IBaseAppService<OrderDTO>
     {
         Task<OrderDTO> PlaceOrderAsync(CheckoutRequest request);
-        Task<IEnumerable<OrderDTO>> GetCustomerHistoryAsync(int customerId);
+        Task<IEnumerable<OrderDTO>> GetCustomerHistoryAsync(Guid customerId);
     }
 }

@@ -11,7 +11,6 @@
 		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.2" />
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\..\test\FSI.CloudShopping.UnitTests.API\FSI.CloudShopping.UnitTests.API.csproj" />
 		<ProjectReference Include="..\FSI.CloudShopping.Application\FSI.CloudShopping.Application.csproj" />
 		<ProjectReference Include="..\FSI.CloudShopping.Infrastructure\FSI.CloudShopping.Infrastructure.csproj" />
 	</ItemGroup>

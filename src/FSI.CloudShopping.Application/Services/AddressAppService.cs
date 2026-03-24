@@ -6,7 +6,7 @@ using FSI.CloudShopping.Domain.Entities;
 using FSI.CloudShopping.Domain.Interfaces;
 namespace FSI.CloudShopping.Application.Services
 {
-    public class AddressAppService : BaseAppService<Address, AddressDTO>, IAddressAppService
+    public class AddressAppService : BaseAppService<Address, Guid, AddressDTO>, IAddressAppService
     {
         private readonly IAddressRepository _addressRepository;
         private readonly ICustomerRepository _customerRepository;
@@ -30,7 +30,7 @@ namespace FSI.CloudShopping.Application.Services
             return Mapper.Map<AddressDTO>(address);
         }
 
-        public async Task SetDefaultAddressAsync(int addressId, int customerId)
+        public async Task SetDefaultAddressAsync(Guid addressId, Guid customerId)
         {
             var addresses = (await _addressRepository.GetByCustomerIdAsync(customerId)).ToList();
             var addressToSet = addresses.FirstOrDefault(a => a.Id == addressId);
@@ -46,7 +46,7 @@ namespace FSI.CloudShopping.Application.Services
             }
             await _addressRepository.SaveChangesAsync();
         }
-        public async Task<IEnumerable<AddressDTO>> GetByCustomerIdAsync(int customerId)
+        public async Task<IEnumerable<AddressDTO>> GetByCustomerIdAsync(Guid customerId)
         {
             var addresses = await _addressRepository.GetByCustomerIdAsync(customerId);
             return Mapper.Map<IEnumerable<AddressDTO>>(addresses);

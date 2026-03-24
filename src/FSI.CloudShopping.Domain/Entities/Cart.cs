@@ -2,6 +2,7 @@ namespace FSI.CloudShopping.Domain.Entities;
 
 using FSI.CloudShopping.Domain.Core;
 using FSI.CloudShopping.Domain.ValueObjects;
+using FSI.CloudShopping.Domain.Events;
 
 /// <summary>
 /// Aggregate root for Cart. Represents a shopping cart for a customer session.

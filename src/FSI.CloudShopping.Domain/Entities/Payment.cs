@@ -3,6 +3,7 @@ namespace FSI.CloudShopping.Domain.Entities;
 using FSI.CloudShopping.Domain.Core;
 using FSI.CloudShopping.Domain.Enums;
 using FSI.CloudShopping.Domain.ValueObjects;
+using FSI.CloudShopping.Domain.Events;
 
 /// <summary>
 /// Aggregate root for Payment. Represents a payment for an order.
@@ -75,7 +76,7 @@ public class Payment : AggregateRoot<int>
         ProcessedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
 
-        RaiseDomainEvent(new PaymentFailedEvent(Id, OrderId, reason));
+        RaiseDomainEvent(new PaymentFailedEvent(Id, OrderId, reason, RetryCount));
     }
 
     public void Refund(string? reason = null)

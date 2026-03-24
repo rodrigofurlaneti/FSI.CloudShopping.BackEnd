@@ -8,7 +8,7 @@ using FSI.CloudShopping.Domain.ValueObjects;
 
 namespace FSI.CloudShopping.Application.Services
 {
-    public class ProductAppService : BaseAppService<Product, ProductDTO>, IProductAppService
+    public class ProductAppService : BaseAppService<Product, int, ProductDTO>, IProductAppService
     {
         private readonly IProductRepository _productRepository;
 

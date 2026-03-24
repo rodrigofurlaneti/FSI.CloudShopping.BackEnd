@@ -8,7 +8,7 @@ using FSI.CloudShopping.Domain.ValueObjects;
 
 namespace FSI.CloudShopping.Application.Services
 {
-    public class ContactAppService : BaseAppService<Contact, ContactDTO>, IContactAppService
+    public class ContactAppService : BaseAppService<Contact, Guid, ContactDTO>, IContactAppService
     {
         private readonly IContactRepository _contactRepository;
         private readonly ICustomerRepository _customerRepository;
@@ -37,7 +37,7 @@ namespace FSI.CloudShopping.Application.Services
             return Mapper.Map<ContactDTO>(contact);
         }
 
-        public async Task<IEnumerable<ContactDTO>> GetByCustomerIdAsync(int customerId)
+        public async Task<IEnumerable<ContactDTO>> GetByCustomerIdAsync(Guid customerId)
         {
             var contacts = await _contactRepository.GetByCustomerIdAsync(customerId);
             return Mapper.Map<IEnumerable<ContactDTO>>(contacts);

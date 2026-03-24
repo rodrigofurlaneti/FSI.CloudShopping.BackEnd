@@ -8,7 +8,7 @@ using FSI.CloudShopping.Domain.ValueObjects;
 
 namespace FSI.CloudShopping.Application.Services
 {
-    public class CartAppService : BaseAppService<Cart, CartDTO>, ICartAppService
+    public class CartAppService : BaseAppService<Cart, int, CartDTO>, ICartAppService
     {
         private readonly ICartRepository _cartRepository;
         private readonly IProductRepository _productRepository;
@@ -35,27 +35,29 @@ namespace FSI.CloudShopping.Application.Services
         }
         public async Task<CartDTO> AddItemAsync(Guid sessionToken, int productId, int quantity)
         {
-            var customerId = await _customerRepository.GetIdBySessionTokenAsync(sessionToken);
-            if (customerId == 0)
+            var customer = await _customerRepository.GetBySessionTokenAsync(sessionToken);
+            if (customer == null)
                 throw new DomainException("Sessão expirada ou inválida.");
-            var cart = await _cartRepository.GetByCustomerIdAsync(customerId) ?? new Cart(customerId);
+            var cart = await _cartRepository.GetByCustomerIdAsync(customer.Id) ?? Cart.Create(customer.Id);
             var product = await _productRepository.GetByIdAsync(productId);
             if (product == null) throw new DomainException("Produto não encontrado.");
-            cart.AddOrUpdateItem(productId, new Quantity(quantity), new Money(product.Price.Value));
+            cart.AddOrUpdateItem(productId, product.Name, product.ImageUrl ?? string.Empty,
+                product.Sku.Value, new Quantity(quantity), new Money(product.Price.Value));
             if (cart.Id == 0) await _cartRepository.AddAsync(cart);
             else await _cartRepository.UpdateAsync(cart);
             await _cartRepository.SaveChangesAsync();
-            return _mapper.Map<CartDTO>(cart); 
+            return _mapper.Map<CartDTO>(cart);
         }
-        public async Task MergeAfterLoginAsync(Guid visitorToken, int customerId)
+        public async Task MergeAfterLoginAsync(Guid visitorToken, Guid customerId)
         {
             var visitorCart = await _cartRepository.GetBySessionTokenAsync(visitorToken);
             var userCart = await _cartRepository.GetByCustomerIdAsync(customerId);
             if (visitorCart == null) return;
-            if (userCart == null) userCart = new Cart(customerId);
+            if (userCart == null) userCart = Cart.Create(customerId);
 
             foreach (var item in visitorCart.Items)
-                userCart.AddOrUpdateItem(item.ProductId, item.Quantity, item.UnitPrice);
+                userCart.AddOrUpdateItem(item.ProductId, item.ProductName, item.ProductImageUrl,
+                    item.ProductSku, new Quantity(item.Quantity), item.UnitPrice);
 
             await _cartRepository.UpdateAsync(userCart);
             await _cartRepository.RemoveAsync(visitorCart.Id);

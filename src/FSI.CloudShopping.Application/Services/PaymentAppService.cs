@@ -7,7 +7,7 @@ using FSI.CloudShopping.Domain.Interfaces;
 using FSI.CloudShopping.Domain.ValueObjects;
 namespace FSI.CloudShopping.Application.Services
 {
-    public class PaymentAppService : BaseAppService<Payment, PaymentDTO>, IPaymentAppService
+    public class PaymentAppService : BaseAppService<Payment, int, PaymentDTO>, IPaymentAppService
     {
         private readonly IPaymentRepository _paymentRepository;
         private readonly IOrderRepository _orderRepository;
@@ -37,7 +37,7 @@ namespace FSI.CloudShopping.Application.Services
             }
             catch (Exception)
             {
-                payment.Fail();
+                payment.Fail("Payment capture failed");
                 throw;
             }
             await _paymentRepository.AddAsync(payment);

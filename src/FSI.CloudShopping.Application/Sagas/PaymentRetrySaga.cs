@@ -1,6 +1,7 @@
 namespace FSI.CloudShopping.Application.Sagas;
 
 using MediatR;
+using FSI.CloudShopping.Domain.Core;
 using Microsoft.Extensions.Logging;
 using FSI.CloudShopping.Application.Interfaces;
 using FSI.CloudShopping.Domain.Events;

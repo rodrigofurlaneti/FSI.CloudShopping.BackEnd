@@ -8,7 +8,7 @@ using FSI.CloudShopping.Domain.ValueObjects;
 
 namespace FSI.CloudShopping.Application.Services
 {
-    public class CustomerAppService : BaseAppService<Customer, CustomerDTO>, ICustomerAppService
+    public class CustomerAppService : BaseAppService<Customer, Guid, CustomerDTO>, ICustomerAppService
     {
         private readonly ICustomerRepository _customerRepository;
         private readonly IPasswordHasher _passwordHasher;

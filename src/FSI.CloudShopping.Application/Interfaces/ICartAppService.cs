@@ -7,7 +7,7 @@ namespace FSI.CloudShopping.Application.Interfaces
     {
         Task<CartDTO> GetByTokenAsync(Guid sessionToken); 
         Task<CartDTO> AddItemAsync(Guid sessionToken, int productId, int quantity);
-        Task MergeAfterLoginAsync(Guid visitorToken, int customerId);
+        Task MergeAfterLoginAsync(Guid visitorToken, Guid customerId);
         Task ClearCartAsync(string token);
     }
 }

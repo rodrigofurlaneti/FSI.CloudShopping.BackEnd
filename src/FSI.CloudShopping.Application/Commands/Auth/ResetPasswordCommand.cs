@@ -1,6 +1,7 @@
 namespace FSI.CloudShopping.Application.Commands.Auth;
 
 using MediatR;
+using FSI.CloudShopping.Domain.Core;
 using FSI.CloudShopping.Application.Common;
 using FSI.CloudShopping.Domain.Interfaces;
 using FSI.CloudShopping.Domain.ValueObjects;
